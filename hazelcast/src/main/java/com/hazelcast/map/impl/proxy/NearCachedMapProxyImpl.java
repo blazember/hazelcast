@@ -19,6 +19,7 @@ package com.hazelcast.map.impl.proxy;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.core.ExecutionCallback;
+import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.nearcache.NearCache;
 import com.hazelcast.internal.nearcache.impl.invalidation.BatchNearCacheInvalidation;
@@ -36,6 +37,7 @@ import com.hazelcast.spi.EventFilter;
 import com.hazelcast.spi.ExecutionService;
 import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
+import com.hazelcast.util.ReproducerHelper;
 import com.hazelcast.util.executor.CompletedFuture;
 
 import java.util.Collection;
@@ -605,9 +607,23 @@ public class NearCachedMapProxyImpl<K, V> extends MapProxyImpl<K, V> {
 
     public String addNearCacheInvalidationListener(InvalidationListener listener) {
         // local member UUID may change after a split-brain merge
-        String localMemberUuid = getNodeEngine().getClusterService().getLocalMember().getUuid();
-        EventFilter eventFilter = new UuidFilter(localMemberUuid);
-        return mapServiceContext.addEventListener(listener, eventFilter, name);
+        boolean onExpectedInstance = ReproducerHelper.onExpectedInstance(getNodeEngine());
+        if (onExpectedInstance) {
+            try {
+                ReproducerHelper.shutdownStarted.await();
+            } catch (InterruptedException e) {
+            }
+        }
+        try {
+            String localMemberUuid = getNodeEngine().getClusterService().getLocalMember().getUuid();
+            EventFilter eventFilter = new UuidFilter(localMemberUuid);
+            return mapServiceContext.addEventListener(listener, eventFilter, this.name);
+        } catch (HazelcastInstanceNotActiveException ex) {
+            if (onExpectedInstance) {
+                ReproducerHelper.notActiveExceptionThrown.countDown();
+            }
+            throw ex;
+        }
     }
 
     private void registerInvalidationListener() {

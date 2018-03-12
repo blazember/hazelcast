@@ -25,6 +25,7 @@ import com.hazelcast.spi.InitializingObject;
 import com.hazelcast.spi.RemoteService;
 import com.hazelcast.spi.impl.eventservice.InternalEventService;
 import com.hazelcast.util.ExceptionUtil;
+import com.hazelcast.util.ReproducerHelper;
 
 import java.util.Collection;
 import java.util.Map;
@@ -203,6 +204,19 @@ public final class ProxyRegistry {
             // proxy creation or initialization failed
             // deregister future to avoid infinite hang on future.get()
             proxyFuture.setError(e);
+
+            if (ReproducerHelper.onExpectedInstance(proxyService.nodeEngine)) {
+                ReproducerHelper.errorSetInFuture.countDown();
+                try {
+                    ReproducerHelper.destroyExecuted.await();
+                } catch (InterruptedException e1) {
+                    try {
+                        ReproducerHelper.destroyExecuted.await();
+                    } catch (InterruptedException e2) {
+                        e2.printStackTrace();
+                    }
+                }
+            }
             proxies.remove(name);
             throw ExceptionUtil.rethrow(e);
         }
@@ -258,14 +272,26 @@ public final class ProxyRegistry {
      * Destroys this proxy registry.
      */
     void destroy() {
+        if (ReproducerHelper.onExpectedInstance(proxyService.nodeEngine)) {
+            try {
+                ReproducerHelper.errorSetInFuture.await();
+            } catch (InterruptedException e) {
+            }
+        }
+        
         for (DistributedObjectFuture future : proxies.values()) {
             if (!future.isSetAndInitialized()) {
                 continue;
             }
-            DistributedObject distributedObject = future.get();
-            if (distributedObject instanceof AbstractDistributedObject) {
-                ((AbstractDistributedObject) distributedObject).invalidate();
-            }
+            // try block makes the test pass
+//            try {
+                DistributedObject distributedObject = future.get();
+                if (distributedObject instanceof AbstractDistributedObject) {
+                    ((AbstractDistributedObject) distributedObject).invalidate();
+                }
+            //            } catch (HazelcastInstanceNotActiveException ex) {
+            //                EmptyStatement.ignore(ex);
+            //            }
         }
         proxies.clear();
     }

@@ -19,6 +19,8 @@ package com.hazelcast.test;
 import com.hazelcast.cache.jsr.JsrTestUtil;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.hazelcast.test.annotation.Repeat;
 import com.hazelcast.test.bounce.BounceMemberRule;
 import net.bytebuddy.agent.ByteBuddyAgent;
@@ -337,9 +339,19 @@ public abstract class AbstractHazelcastClassRunner extends AbstractParameterized
                 // check for running Hazelcast instances
                 Set<HazelcastInstance> instances = Hazelcast.getAllHazelcastInstances();
                 if (!instances.isEmpty()) {
+                    ILogger logger = Logger.getLogger(AbstractHazelcastClassRunner.class);
                     String message = "Instances haven't been shut down: " + instances;
+                    logger.warning(message);
                     Hazelcast.shutdownAll();
                     throw new IllegalStateException(message);
+                }
+                Set<Thread> threads = Thread.getAllStackTraces().keySet();
+                for (Thread thread : threads) {
+                    String threadName = thread.getName();
+                    if (threadName.contains("hz._hzInstance_")) {
+                        String message = "Thread hasn't been shut down: " + threadName;
+                        throw new IllegalStateException(message);
+                    }
                 }
 
                 // check for leftover CachingProvider instances

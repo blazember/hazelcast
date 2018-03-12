@@ -73,6 +73,7 @@ import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.spi.serialization.SerializationService;
 import com.hazelcast.transaction.TransactionManagerService;
 import com.hazelcast.transaction.impl.TransactionManagerServiceImpl;
+import com.hazelcast.util.ReproducerHelper;
 import com.hazelcast.version.MemberVersion;
 import com.hazelcast.wan.WanReplicationService;
 
@@ -460,6 +461,9 @@ public class NodeEngineImpl implements NodeEngine {
         logger.finest("Shutting down services...");
         operationParker.shutdown();
         operationService.shutdownInvocations();
+        if (ReproducerHelper.onExpectedInstance(node)) {
+            ReproducerHelper.shutdownStarted.countDown();
+        }
         proxyService.shutdown();
         serviceManager.shutdown(terminate);
         eventService.shutdown();

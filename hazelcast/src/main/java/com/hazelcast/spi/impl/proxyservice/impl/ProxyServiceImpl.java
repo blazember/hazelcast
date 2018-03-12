@@ -38,6 +38,7 @@ import com.hazelcast.spi.impl.proxyservice.impl.operations.DistributedObjectDest
 import com.hazelcast.spi.impl.proxyservice.impl.operations.PostJoinProxyOperation;
 import com.hazelcast.util.ConstructorFunction;
 import com.hazelcast.util.FutureUtil.ExceptionHandler;
+import com.hazelcast.util.ReproducerHelper;
 import com.hazelcast.util.UuidUtil;
 
 import java.util.ArrayList;
@@ -261,6 +262,12 @@ public class ProxyServiceImpl
     }
 
     public void shutdown() {
+        if (ReproducerHelper.onExpectedInstance(nodeEngine)) {
+            try {
+                ReproducerHelper.notActiveExceptionThrown.await();
+            } catch (InterruptedException e) {
+            }
+        }
         for (ProxyRegistry registry : registries.values()) {
             registry.destroy();
         }

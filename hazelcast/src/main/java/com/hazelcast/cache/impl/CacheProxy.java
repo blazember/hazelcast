@@ -24,6 +24,7 @@ import com.hazelcast.cache.impl.journal.CacheEventJournalSubscribeOperation;
 import com.hazelcast.cache.impl.operation.CacheListenerRegistrationOperation;
 import com.hazelcast.cache.journal.EventJournalCacheEvent;
 import com.hazelcast.config.CacheConfig;
+import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.core.ICompletableFuture;
 import com.hazelcast.core.Member;
 import com.hazelcast.internal.journal.EventJournalInitialSubscriberState;
@@ -38,6 +39,7 @@ import com.hazelcast.spi.InternalCompletableFuture;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.Operation;
 import com.hazelcast.spi.OperationService;
+import com.hazelcast.util.ReproducerHelper;
 import com.hazelcast.util.function.Predicate;
 
 import javax.cache.CacheException;
@@ -85,7 +87,23 @@ public class CacheProxy<K, V> extends AbstractCacheProxy<K, V>
 
     CacheProxy(CacheConfig<K, V> cacheConfig, NodeEngine nodeEngine, ICacheService cacheService) {
         super(cacheConfig, nodeEngine, cacheService);
-        logger = getNodeEngine().getLogger(getClass());
+        if (ReproducerHelper.onExpectedInstance(nodeEngine)) {
+            try {
+                ReproducerHelper.shutdownStarted.await();
+            } catch (InterruptedException e) {
+            }
+        }
+        ILogger tmpLogger = null;
+        try {
+            tmpLogger = getNodeEngine().getLogger(getClass());
+        } catch (HazelcastInstanceNotActiveException ex) {
+            if (ReproducerHelper.onExpectedInstance(nodeEngine)) {
+                ReproducerHelper.notActiveExceptionThrown.countDown();
+            }
+            throw ex;
+        } finally {
+            logger = tmpLogger;
+        }
     }
 
     @Override

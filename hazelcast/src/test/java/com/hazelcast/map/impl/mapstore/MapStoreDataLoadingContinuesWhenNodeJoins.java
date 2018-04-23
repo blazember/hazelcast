@@ -32,6 +32,7 @@ import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.SlowTest;
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -162,6 +163,7 @@ public class MapStoreDataLoadingContinuesWhenNodeJoins extends HazelcastTestSupp
         }
     }
 
+    @Ignore("Ignoring as the test may fail randomly due to a known issue in MapLoader, see issues 11544 and 12384")
     @Test(timeout = 600000)
     public void testLoadingFinishes_whenMemberJoinsWhileLoading() throws Exception {
         assumeThat("With LAZY InMemoryModel this test may fail due to a known issue reported in OS #11544 and #12384",

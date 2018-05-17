@@ -18,6 +18,7 @@ package com.hazelcast.internal.nearcache.impl.invalidation;
 
 
 import com.hazelcast.internal.nearcache.NearCacheRecord;
+import com.hazelcast.logging.Logger;
 
 /**
  * Default implementation of {@link StaleReadDetector}.
@@ -35,8 +36,19 @@ public class StaleReadDetectorImpl implements StaleReadDetector {
     @Override
     public boolean isStaleRead(Object key, NearCacheRecord record) {
         MetaDataContainer latestMetaData = repairingHandler.getMetaDataContainer(record.getPartitionId());
-        return !record.hasSameUuid(latestMetaData.getUuid())
+        boolean staleRead = !record.hasSameUuid(latestMetaData.getUuid())
                 || record.getInvalidationSequence() < latestMetaData.getStaleSequence();
+        if (staleRead) {
+            Logger.getLogger(StaleReadDetectorImpl.class)
+                  .warning("STALE READ: record=" + record
+                          + " latestMetaData.uuid=" + latestMetaData.getUuid()
+                          + " latestMetaData.sequence=" + latestMetaData.getSequence()
+                          + " latestMetaData.staleSequence=" + latestMetaData.getStaleSequence()
+                          + " latestMetaData.missedSequenceCount=" + latestMetaData.getMissedSequenceCount()
+                  );
+        }
+
+        return staleRead;
     }
 
     @Override

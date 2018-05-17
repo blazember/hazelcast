@@ -22,6 +22,7 @@ import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
+import com.hazelcast.logging.Logger;
 import com.hazelcast.map.impl.proxy.NearCachedMapProxyImpl;
 import com.hazelcast.monitor.NearCacheStats;
 import com.hazelcast.test.HazelcastParametersRunnerFactory;
@@ -133,6 +134,8 @@ public class MemberMapReconciliationTest extends HazelcastTestSupport {
         warmUpPartitions(factory.getAllHazelcastInstances());
         waitAllForSafeState(factory.getAllHazelcastInstances());
 
+        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Near cache get #1");
+
         for (int i = 0; i < total; i++) {
             nearCachedMapFromNewServer.get(i);
         }
@@ -140,13 +143,20 @@ public class MemberMapReconciliationTest extends HazelcastTestSupport {
         NearCacheStats nearCacheStats = nearCachedMapFromNewServer.getLocalMapStats().getNearCacheStats();
 
         assertStats(nearCacheStats, total, 0, total);
+        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Stats assertion #1");
 
+        serverMap.put(1, 3);
+
+        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Sleep begin");
         sleepSeconds(2 * RECONCILIATION_INTERVAL_SECONDS);
+        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Sleep end");
 
+        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Near cache get #2");
         for (int i = 0; i < total; i++) {
             nearCachedMapFromNewServer.get(i);
         }
 
+        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Stats assertion #2");
         assertStats(nearCacheStats, total, total, total);
     }
 

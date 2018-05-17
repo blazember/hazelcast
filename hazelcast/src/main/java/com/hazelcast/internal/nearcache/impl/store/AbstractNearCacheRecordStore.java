@@ -29,6 +29,7 @@ import com.hazelcast.internal.nearcache.NearCacheRecordStore;
 import com.hazelcast.internal.nearcache.impl.SampleableNearCacheRecordMap;
 import com.hazelcast.internal.nearcache.impl.invalidation.MetaDataContainer;
 import com.hazelcast.internal.nearcache.impl.invalidation.StaleReadDetector;
+import com.hazelcast.logging.Logger;
 import com.hazelcast.monitor.NearCacheStats;
 import com.hazelcast.monitor.impl.NearCacheStatsImpl;
 import com.hazelcast.nio.serialization.Data;
@@ -275,6 +276,7 @@ public abstract class AbstractNearCacheRecordStore<K, V, KS, R extends NearCache
                 }
                 if (staleReadDetector.isStaleRead(key, record)) {
                     remove(key);
+                    Logger.getLogger(AbstractNearCacheRecordStore.class).warning("***** Near cache MISS because of stale read!");
                     nearCacheStats.incrementMisses();
                     return null;
                 }
@@ -290,6 +292,7 @@ public abstract class AbstractNearCacheRecordStore<K, V, KS, R extends NearCache
                 onGet(key, value, record);
                 return value;
             } else {
+                Logger.getLogger(AbstractNearCacheRecordStore.class).warning("***** Near cache MISS because of no record found!");
                 nearCacheStats.incrementMisses();
                 return null;
             }

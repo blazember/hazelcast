@@ -147,8 +147,6 @@ public class MemberMapReconciliationTest extends HazelcastTestSupport {
         assertStats(nearCacheStats, total, 0, total);
         Logger.getLogger(MemberMapReconciliationTest.class).info("***** Stats assertion #1");
 
-        serverMap.put(1, 3);
-
         Logger.getLogger(MemberMapReconciliationTest.class).info("***** Sleep begin");
         sleepSeconds(2 * RECONCILIATION_INTERVAL_SECONDS);
         Logger.getLogger(MemberMapReconciliationTest.class).info("***** Sleep end");

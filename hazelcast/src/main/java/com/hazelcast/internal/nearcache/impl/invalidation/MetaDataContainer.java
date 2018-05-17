@@ -16,6 +16,8 @@
 
 package com.hazelcast.internal.nearcache.impl.invalidation;
 
+import com.hazelcast.logging.Logger;
+
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -67,10 +69,18 @@ public final class MetaDataContainer {
     }
 
     public void setUuid(UUID uuid) {
+        if (uuid == null) {
+            Logger.getLogger(MetaDataContainer.class).warning("***** UUID is set to null: " + this);
+            Logger.getLogger(MetaDataContainer.class).warning(Thread.currentThread().getStackTrace().toString());
+        }
         UUID.set(this, uuid);
     }
 
     public boolean casUuid(UUID prevUuid, UUID newUuid) {
+        if (newUuid == null) {
+            Logger.getLogger(MetaDataContainer.class).warning("***** UUID is CASed to null: " + this);
+            Logger.getLogger(MetaDataContainer.class).warning(Thread.currentThread().getStackTrace().toString());
+        }
         return UUID.compareAndSet(this, prevUuid, newUuid);
     }
 

@@ -30,6 +30,7 @@ import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import com.hazelcast.test.annotation.Repeat;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -119,6 +120,7 @@ public class MemberMapReconciliationTest extends HazelcastTestSupport {
     }
 
     @Test
+    @Repeat(100)
     public void test_reconciliation_does_not_cause_premature_removal() throws Exception {
         int total = 100;
         for (int i = 0; i < total; i++) {

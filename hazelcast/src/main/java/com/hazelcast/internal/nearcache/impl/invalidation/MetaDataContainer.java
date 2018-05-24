@@ -62,6 +62,8 @@ public final class MetaDataContainer {
     private volatile UUID uuid;
 
     public MetaDataContainer() {
+        Logger.getLogger(MetaDataContainer.class).warning("***** MetaDataContainer created from "
+                + stackTraceAsString(Thread.currentThread().getStackTrace()));
     }
 
     public UUID getUuid() {
@@ -82,6 +84,15 @@ public final class MetaDataContainer {
             Logger.getLogger(MetaDataContainer.class).warning(Thread.currentThread().getStackTrace().toString());
         }
         return UUID.compareAndSet(this, prevUuid, newUuid);
+    }
+
+    private String stackTraceAsString(StackTraceElement[] stackTraceElements) {
+        StringBuilder sb = new StringBuilder();
+        for (StackTraceElement element : stackTraceElements) {
+            sb.append(element.toString()).append("\n");
+        }
+
+        return sb.toString();
     }
 
     public long getSequence() {

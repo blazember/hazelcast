@@ -767,6 +767,10 @@ public abstract class HazelcastTestSupport {
             }
         }
 
+        if (!nonSafeStates.isEmpty()) {
+            Logger.getLogger(HazelcastTestSupport.class).warning("***** CLUSTER IS NOT IN SAFE STATE");
+        }
+
         assertTrue("Instances not in safe state! " + nonSafeStates, nonSafeStates.isEmpty());
     }
 

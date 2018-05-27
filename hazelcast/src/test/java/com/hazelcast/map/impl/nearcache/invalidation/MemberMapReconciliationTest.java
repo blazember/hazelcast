@@ -142,7 +142,7 @@ public class MemberMapReconciliationTest extends HazelcastTestSupport {
             nearCachedMapFromNewServer.get(i);
         }
 
-        assertAllInSafeState(factory.getAllHazelcastInstances());
+        waitAllForSafeState(factory.getAllHazelcastInstances());
         NearCacheStats nearCacheStats = nearCachedMapFromNewServer.getLocalMapStats().getNearCacheStats();
 
         assertStats(nearCacheStats, total, 0, total);

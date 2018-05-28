@@ -442,6 +442,8 @@ public abstract class AbstractNearCacheRecordStore<K, V, KS, R extends NearCache
     private void initInvalidationMetaData(R record, K key, Data keyData) {
         if (staleReadDetector == ALWAYS_FRESH) {
             // means invalidation event creation is disabled for this Near Cache
+            Logger.getLogger(AbstractNearCacheRecordStore.class).warning("***** Not setting fields in record since "
+                    + "staleReadDetector == ALWAYS_FRESH");
             return;
         }
 

@@ -17,6 +17,7 @@
 package com.hazelcast.internal.nearcache.impl.record;
 
 import com.hazelcast.internal.nearcache.NearCacheRecord;
+import com.hazelcast.logging.Logger;
 
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
@@ -164,11 +165,17 @@ public abstract class AbstractNearCacheRecord<V> implements NearCacheRecord<V> {
 
     @Override
     public void setInvalidationSequence(long sequence) {
+        if (sequence == 0) {
+            Logger.getLogger(AbstractNearCacheRecord.class).warning("***** Invalidation sequence is set to 0");
+        }
         this.sequence = sequence;
     }
 
     @Override
     public void setUuid(UUID uuid) {
+        if (uuid == null) {
+            Logger.getLogger(AbstractNearCacheRecord.class).warning("***** UUID is set to null");
+        }
         this.uuid = uuid;
     }
 

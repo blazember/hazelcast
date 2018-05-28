@@ -173,7 +173,9 @@ public final class RepairingTask implements Runnable {
             RepairingHandler handler = new RepairingHandler(logger, localUuid, dataStructureName,
                     nearCache, serializationService, partitionService);
             StaleReadDetector staleReadDetector = new StaleReadDetectorImpl(handler, partitionService);
+            logger.warning("***** Setting staleReadDetector");
             nearCache.unwrap(DefaultNearCache.class).getNearCacheRecordStore().setStaleReadDetector(staleReadDetector);
+            logger.warning("***** staleReadDetector has been set");
 
             initRepairingHandler(handler);
 

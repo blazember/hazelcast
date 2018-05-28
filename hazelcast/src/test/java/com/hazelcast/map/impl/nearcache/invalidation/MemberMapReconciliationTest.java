@@ -22,6 +22,9 @@ import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
+import com.hazelcast.internal.nearcache.impl.DefaultNearCache;
+import com.hazelcast.internal.nearcache.impl.invalidation.StaleReadDetector;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.map.impl.proxy.NearCachedMapProxyImpl;
 import com.hazelcast.monitor.NearCacheStats;
@@ -42,6 +45,7 @@ import java.util.Collection;
 
 import static com.hazelcast.config.InMemoryFormat.BINARY;
 import static com.hazelcast.config.InMemoryFormat.OBJECT;
+import static com.hazelcast.internal.nearcache.impl.invalidation.StaleReadDetector.ALWAYS_FRESH;
 import static com.hazelcast.spi.properties.GroupProperty.MAP_INVALIDATION_MESSAGE_BATCH_FREQUENCY_SECONDS;
 import static com.hazelcast.spi.properties.GroupProperty.MAP_INVALIDATION_MESSAGE_BATCH_SIZE;
 import static java.lang.String.format;
@@ -136,27 +140,34 @@ public class MemberMapReconciliationTest extends HazelcastTestSupport {
         warmUpPartitions(factory.getAllHazelcastInstances());
         waitAllForSafeState(factory.getAllHazelcastInstances());
 
-        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Near cache get #1");
+        DefaultNearCache unwrap = (DefaultNearCache) ((NearCachedMapProxyImpl) nearCachedMapFromNewServer).getNearCache()
+                                                                                                          .unwrap(DefaultNearCache.class);
+        ILogger logger = Logger.getLogger(MemberMapReconciliationTest.class);
+        logger.info("***** Near cache get #1");
 
         for (int i = 0; i < total; i++) {
+            StaleReadDetector staleReadDetector = unwrap.getNearCacheRecordStore().getStaleReadDetector();
+            if (staleReadDetector == ALWAYS_FRESH) {
+                logger.severe("***** Near cache stale read detector is still ALWAYS_FRESH");
+            }
             nearCachedMapFromNewServer.get(i);
         }
 
         NearCacheStats nearCacheStats = nearCachedMapFromNewServer.getLocalMapStats().getNearCacheStats();
 
         assertStats(nearCacheStats, total, 0, total);
-        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Stats assertion #1");
+        logger.info("***** Stats assertion #1");
 
-        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Sleep begin");
+        logger.info("***** Sleep begin");
         sleepSeconds(2 * RECONCILIATION_INTERVAL_SECONDS);
-        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Sleep end");
+        logger.info("***** Sleep end");
 
-        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Near cache get #2");
+        logger.info("***** Near cache get #2");
         for (int i = 0; i < total; i++) {
             nearCachedMapFromNewServer.get(i);
         }
 
-        Logger.getLogger(MemberMapReconciliationTest.class).info("***** Stats assertion #2");
+        logger.info("***** Stats assertion #2");
         assertStats(nearCacheStats, total, total, total);
     }
 

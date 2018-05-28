@@ -292,7 +292,7 @@ public abstract class AbstractNearCacheRecordStore<K, V, KS, R extends NearCache
                 onGet(key, value, record);
                 return value;
             } else {
-                Logger.getLogger(AbstractNearCacheRecordStore.class).warning("***** Near cache MISS because of no record found!");
+                //                Logger.getLogger(AbstractNearCacheRecordStore.class).warning("***** Near cache MISS because of no record found!");
                 nearCacheStats.incrementMisses();
                 return null;
             }

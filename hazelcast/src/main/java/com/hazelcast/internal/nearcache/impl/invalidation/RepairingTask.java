@@ -209,10 +209,12 @@ public final class RepairingTask implements Runnable {
         try {
             metaDataFetcher.init(handler);
             initialized = true;
+            logger.info("***** RepairingHandler has been initialized");
         } catch (Exception e) {
             logger.warning(e);
         } finally {
             if (!initialized) {
+                logger.info("***** Initializing RepairingHandler asynchronously");
                 initRepairingHandlerAsync(handler);
             }
         }

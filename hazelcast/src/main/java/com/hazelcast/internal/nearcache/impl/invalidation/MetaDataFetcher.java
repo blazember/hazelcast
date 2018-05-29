@@ -17,6 +17,7 @@
 package com.hazelcast.internal.nearcache.impl.invalidation;
 
 import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 import com.hazelcast.spi.InternalCompletableFuture;
 
 import java.util.ArrayList;
@@ -51,6 +52,7 @@ public abstract class MetaDataFetcher {
     public final void init(RepairingHandler handler) throws Exception {
         ResultHolder resultHolder = new ResultHolder();
         List<InternalCompletableFuture> futures = scanMembers(Collections.singletonList(handler.getName()));
+        logger.info("***** Init with member future count: " + futures.size());
         for (InternalCompletableFuture future : futures) {
             extractAndPopulateResult(future, resultHolder);
 
@@ -101,6 +103,7 @@ public abstract class MetaDataFetcher {
     }
 
     protected void initUuid(Collection<Map.Entry<Integer, UUID>> uuids, RepairingHandler handler) {
+        logger.info("***** Init with partition UUIDs: " + uuids.size());
         for (Map.Entry<Integer, UUID> entry : uuids) {
 
             int partitionID = entry.getKey();
@@ -137,6 +140,8 @@ public abstract class MetaDataFetcher {
 
         public void populate(Collection<Map.Entry<Integer, UUID>> partitionUuidList,
                              Collection<Map.Entry<String, List<Map.Entry<Integer, Long>>>> namePartitionSequenceList) {
+            Logger.getLogger(ResultHolder.class)
+                  .info("***** Populating partition UUID list with count: " + partitionUuidList.size());
             this.namePartitionSequenceList = namePartitionSequenceList;
             this.partitionUuidList = partitionUuidList;
         }

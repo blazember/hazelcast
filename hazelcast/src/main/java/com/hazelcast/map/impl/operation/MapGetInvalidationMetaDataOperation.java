@@ -156,6 +156,7 @@ public class MapGetInvalidationMetaDataOperation extends Operation implements Id
     }
 
     private Map<Integer, UUID> getPartitionUuidList(List<Integer> ownedPartitionIds) {
+        getLogger().info("**** Collecting partition UUID list for " + ownedPartitionIds.size() + " partitions");
         MetaDataGenerator metaDataGenerator = getPartitionMetaDataGenerator();
         Map<Integer, UUID> partitionUuids = createHashMap(ownedPartitionIds.size());
         for (Integer partitionId : ownedPartitionIds) {

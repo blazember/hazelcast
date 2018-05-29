@@ -53,11 +53,34 @@ public abstract class MetaDataFetcher {
         ResultHolder resultHolder = new ResultHolder();
         List<InternalCompletableFuture> futures = scanMembers(Collections.singletonList(handler.getName()));
         logger.info("***** Init with member future count: " + futures.size());
+        short[] partitionFetches = new short[271];
+        short partitionsFetchedNotExactlyOnce = 271;
+
         for (InternalCompletableFuture future : futures) {
             extractAndPopulateResult(future, resultHolder);
 
             initUuid(resultHolder.partitionUuidList, handler);
             initSequence(resultHolder.namePartitionSequenceList, handler);
+
+            for (Map.Entry<Integer, UUID> entry : resultHolder.partitionUuidList) {
+                int partitionId = entry.getKey();
+                partitionFetches[partitionId]++;
+                if (partitionFetches[partitionId] == 1) {
+                    partitionsFetchedNotExactlyOnce--;
+                }
+            }
+        }
+
+        if (partitionsFetchedNotExactlyOnce != 0) {
+            StringBuilder sb = new StringBuilder("***** " + partitionsFetchedNotExactlyOnce
+                    + " partitions not fetched exactly once: ");
+            for (int i = 0; i < 271; i++) {
+                short fetchCount = partitionFetches[i];
+                if (fetchCount != 1) {
+                    sb.append("(").append(i).append(": ").append(fetchCount).append(") ");
+                }
+            }
+            logger.info(sb.toString());
         }
     }
 

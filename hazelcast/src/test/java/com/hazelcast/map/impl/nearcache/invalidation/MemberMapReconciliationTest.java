@@ -44,7 +44,6 @@ import org.junit.runners.Parameterized;
 import java.util.Collection;
 
 import static com.hazelcast.config.InMemoryFormat.BINARY;
-import static com.hazelcast.config.InMemoryFormat.OBJECT;
 import static com.hazelcast.internal.nearcache.impl.invalidation.StaleReadDetector.ALWAYS_FRESH;
 import static com.hazelcast.spi.properties.GroupProperty.MAP_INVALIDATION_MESSAGE_BATCH_FREQUENCY_SECONDS;
 import static com.hazelcast.spi.properties.GroupProperty.MAP_INVALIDATION_MESSAGE_BATCH_SIZE;
@@ -68,9 +67,9 @@ public class MemberMapReconciliationTest extends HazelcastTestSupport {
     public static Collection<Object[]> parameters() {
         return asList(new Object[][]{
                 {BINARY, BINARY},
-                {BINARY, OBJECT},
-                {OBJECT, BINARY},
-                {OBJECT, OBJECT},
+                //                {BINARY, OBJECT},
+                //                {OBJECT, BINARY},
+                //                {OBJECT, OBJECT},
         });
     }
 
@@ -124,7 +123,7 @@ public class MemberMapReconciliationTest extends HazelcastTestSupport {
     }
 
     @Test
-    @Repeat(100)
+    @Repeat(400)
     public void test_reconciliation_does_not_cause_premature_removal() throws Exception {
         int total = 100;
         for (int i = 0; i < total; i++) {

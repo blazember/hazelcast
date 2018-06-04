@@ -29,6 +29,7 @@ import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 import com.hazelcast.test.annotation.ParallelTest;
 import com.hazelcast.test.annotation.QuickTest;
+import com.hazelcast.test.annotation.Repeat;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -62,6 +63,7 @@ public class OperationServiceImpl_invokeOnPartitionsTest extends HazelcastTestSu
     }
 
     @Test
+    @Repeat(50)
     public void testLongRunning() throws Exception {
         Config config = new Config()
                 .setProperty(OPERATION_CALL_TIMEOUT_MILLIS.getName(), "2000")

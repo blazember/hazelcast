@@ -117,6 +117,10 @@ final class DataSerializableSerializer implements StreamSerializer<DataSerializa
         DataSerializable ds = null;
         if (null != aClass) {
             try {
+                if(aClass.getName().contains("SlowOperationFactoryImpl")){
+                    Logger.getLogger(DataSerializableSerializer.class).warning("***** Instantiating new instance of "
+                            + aClass.getName() + " via Class#newInstance()");
+                }
                 ds = (DataSerializable) aClass.newInstance();
             } catch (Exception e) {
                 throw new HazelcastSerializationException("Requested class " + aClass + " could not be instantiated.", e);
@@ -139,6 +143,10 @@ final class DataSerializableSerializer implements StreamSerializer<DataSerializa
                 id = in.readInt();
                 if (null == aClass) {
                     ds = dsf.create(id);
+                    if(ds != null && ds.getClass().getName().contains("SlowOperationFactoryImpl")){
+                        Logger.getLogger(DataSerializableSerializer.class).warning("***** Created instance of "
+                                + ds.getClass().getName() + " via factory " + dsf.getClass().getName());
+                    }
                     if (ds == null) {
                         throw new HazelcastSerializationException(dsf
                                 + " is not be able to create an instance for ID: " + id + " on factory ID: " + factoryId);
@@ -146,6 +154,10 @@ final class DataSerializableSerializer implements StreamSerializer<DataSerializa
                 }
             } else {
                 className = in.readUTF();
+                if(className.contains("SlowOperationFactoryImpl"))  {
+                    Logger.getLogger(DataSerializableSerializer.class).warning("***** Instantiating new instance of "
+                            + ds.getClass().getName() + " via ClassLoaderUtil#newInstance");
+                }
                 if (null == aClass) {
                     ds = ClassLoaderUtil.newInstance(in.getClassLoader(), className);
                 }

@@ -860,5 +860,4 @@ class MapServiceContextImpl implements MapServiceContext {
                 getMapContainer(mapName), partitionId);
         observers.add(observer);
     }
-
 }

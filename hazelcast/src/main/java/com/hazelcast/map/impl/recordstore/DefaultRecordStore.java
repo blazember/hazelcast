@@ -269,6 +269,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
             storage.clear(false);
             mutationObserver.onClear();
         }
+        mutationObserver.onClear();
     }
 
     protected void clearMapStore() {

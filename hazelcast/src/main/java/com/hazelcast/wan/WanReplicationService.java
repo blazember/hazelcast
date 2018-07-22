@@ -109,6 +109,18 @@ public interface WanReplicationService extends CoreService, StatisticsAwareServi
     void syncAllMaps(String wanReplicationName, String targetGroupName);
 
     /**
+     * Initiate WAN Merkle tree check for a specific map
+     * NOTE: not supported on OS, only on EE
+     *
+     * @param wanReplicationName the name of the wan replication config
+     * @param targetGroupName    the group name on the target cluster
+     * @param mapName            the map name
+     * @throws UnsupportedOperationException if the operation is not supported (not EE)
+     * @throws InvalidConfigurationException if there is no WAN replication config for {@code wanReplicationName}
+     */
+    void merkleCheck(String wanReplicationName, String targetGroupName, String mapName);
+
+    /**
      * Clears WAN replication queues of the given wanReplicationName for the given target.
      *
      * @param wanReplicationName the name of the wan replication config

@@ -30,7 +30,6 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  * Utility methods for Merkle tree implementation
  */
 final class MerkleTreeUtil {
-    static final int HUGE_PRIME = 2038079003;
     @SuppressWarnings("checkstyle:magicnumber")
     private static final long INT_RANGE = 1L << 32;
 
@@ -117,7 +116,7 @@ final class MerkleTreeUtil {
      * @see #removeHash(int, int)
      */
     static int addHash(int originalHash, int addedHash) {
-        return originalHash + HUGE_PRIME * addedHash;
+        return originalHash + addedHash;
     }
 
     /**
@@ -142,7 +141,7 @@ final class MerkleTreeUtil {
      * @see #addHash(int, int)
      */
     static int removeHash(int originalHash, int removedHash) {
-        return originalHash - HUGE_PRIME * removedHash;
+        return originalHash - removedHash;
     }
 
     /**

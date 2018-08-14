@@ -84,6 +84,7 @@ import static com.hazelcast.util.Preconditions.checkPositive;
  * {@link MerkleTreeUtil#sumHash(int, int)}
  */
 public class ArrayMerkleTree extends AbstractMerkleTreeView implements MerkleTree {
+    static final int HUGE_PRIME = 2038079003;
     private static final int DEFAULT_EXPECTED_ENTRY_COUNT = 1000;
 
     private final OAHashSet<Object>[] leafKeys;
@@ -112,7 +113,7 @@ public class ArrayMerkleTree extends AbstractMerkleTreeView implements MerkleTre
 
     @Override
     public void updateAdd(Object key, Object value) {
-        int keyHash = key.hashCode();
+        int keyHash = hashKey(key);
         int valueHash = value.hashCode();
 
         int leafOrder = MerkleTreeUtil.getLeafOrderForHash(keyHash, leafLevel);
@@ -126,7 +127,7 @@ public class ArrayMerkleTree extends AbstractMerkleTreeView implements MerkleTre
 
     @Override
     public void updateReplace(Object key, Object oldValue, Object newValue) {
-        int keyHash = key.hashCode();
+        int keyHash = hashKey(key);
         int oldValueHash = oldValue.hashCode();
         int newValueHash = newValue.hashCode();
 
@@ -141,7 +142,7 @@ public class ArrayMerkleTree extends AbstractMerkleTreeView implements MerkleTre
 
     @Override
     public void updateRemove(Object key, Object removedValue) {
-        int keyHash = key.hashCode();
+        int keyHash = hashKey(key);
         int removedValueHash = removedValue.hashCode();
 
         int leafOrder = MerkleTreeUtil.getLeafOrderForHash(keyHash, leafLevel);
@@ -243,6 +244,10 @@ public class ArrayMerkleTree extends AbstractMerkleTreeView implements MerkleTre
     private void removeKeyFromLeaf(int leafOrder, int keyHash, Object key) {
         int relativeLeafOrder = leafOrder - leafLevelOrder;
         leafKeys[relativeLeafOrder].remove(key, keyHash);
+    }
+
+    private int hashKey(Object key) {
+        return HUGE_PRIME * key.hashCode();
     }
 
 }

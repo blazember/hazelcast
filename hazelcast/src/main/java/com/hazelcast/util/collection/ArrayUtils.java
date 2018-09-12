@@ -24,6 +24,10 @@ import java.util.Arrays;
  */
 public final class ArrayUtils {
 
+    private static final int FILL_USE_COPY_THRESHOLD = 2 << 12;
+    static final int FILL_USE_COPY2_THRESHOLD = 2 << 11;
+    static final int FILL_USE_COPY3_THRESHOLD = 2 << 15;
+
     private ArrayUtils() {
     }
 
@@ -186,4 +190,101 @@ public final class ArrayUtils {
             throw new IndexOutOfBoundsException(String.format("index=%d, length=%d, capacity=%d", index, length, capacity));
         }
     }
+
+    public static <T> void fill(T[] array, T value) {
+        if (array.length < FILL_USE_COPY_THRESHOLD) {
+            for (int i = 0; i < array.length; i++) {
+                array[i] = value;
+            }
+            Arrays.fill(array, value);
+            return;
+        }
+
+        array[0] = value;
+
+        int len = array.length;
+        //Value of i will be [1, 2, 4, 8, 16, 32, ..., len]
+        for (int i = 1; i < len; i += i) {
+            System.arraycopy(array, 0, array, i, ((len - i) < i) ? (len - i) : i);
+        }
+    }
+
+    public static <T> void fill3(T[] array, T value) {
+        // small array, use iteration
+        final int length = array.length;
+        if (length < FILL_USE_COPY2_THRESHOLD) {
+            for (int i = 0; i < length; i++) {
+                array[i] = value;
+            }
+            return;
+        }
+
+        // mid-size array (cache miss is not dominant)
+        if (length < FILL_USE_COPY3_THRESHOLD) {
+            array[0] = value;
+            int len = array.length;
+            //Value of i will be [1, 2, 4, 8, 16, 32, ..., len]
+            for (int i = 1; i < len; i += i) {
+                System.arraycopy(array, 0, array, i, ((len - i) < i) ? (len - i) : i);
+            }
+            return;
+        }
+
+        // big array, leverage System.arraycopy() intrinsic
+        for (int i = 0; i < FILL_USE_COPY2_THRESHOLD; i++) {
+            array[i] = value;
+        }
+
+        int lastStartIndex = 0;
+        int lastEndIndex = FILL_USE_COPY2_THRESHOLD - 1;
+        while (length - lastEndIndex > FILL_USE_COPY2_THRESHOLD) {
+            System.arraycopy(array, lastStartIndex, array, lastEndIndex + 1, FILL_USE_COPY2_THRESHOLD);
+            lastStartIndex = lastEndIndex + 1;
+            lastEndIndex = lastStartIndex + FILL_USE_COPY2_THRESHOLD - 1;
+        }
+
+        if (lastEndIndex != length - 1) {
+            System.arraycopy(array, lastStartIndex, array, lastEndIndex + 1, length - lastEndIndex - 1);
+        }
+    }
+
+    public static void fill4(int[] array, int value) {
+        // small array, use iteration
+        final int length = array.length;
+        if (length < FILL_USE_COPY2_THRESHOLD) {
+            for (int i = 0; i < length; i++) {
+                array[i] = value;
+            }
+            return;
+        }
+
+        // mid-size array (cache miss is not dominant)
+        if (length < FILL_USE_COPY3_THRESHOLD) {
+            array[0] = value;
+            int len = array.length;
+            //Value of i will be [1, 2, 4, 8, 16, 32, ..., len]
+            for (int i = 1; i < len; i += i) {
+                System.arraycopy(array, 0, array, i, ((len - i) < i) ? (len - i) : i);
+            }
+            return;
+        }
+
+        // big array, leverage System.arraycopy() intrinsic
+        for (int i = 0; i < FILL_USE_COPY2_THRESHOLD; i++) {
+            array[i] = value;
+        }
+
+        int lastStartIndex = 0;
+        int lastEndIndex = FILL_USE_COPY2_THRESHOLD - 1;
+        while (length - lastEndIndex > FILL_USE_COPY2_THRESHOLD) {
+            System.arraycopy(array, lastStartIndex, array, lastEndIndex + 1, FILL_USE_COPY2_THRESHOLD);
+            lastStartIndex = lastEndIndex + 1;
+            lastEndIndex = lastStartIndex + FILL_USE_COPY2_THRESHOLD - 1;
+        }
+
+        if (lastEndIndex != length - 1) {
+            System.arraycopy(array, lastStartIndex, array, lastEndIndex + 1, length - lastEndIndex - 1);
+        }
+    }
+
 }

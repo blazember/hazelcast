@@ -26,6 +26,7 @@ import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 
+import static com.hazelcast.util.collection.ArrayUtils.FILL_USE_COPY2_THRESHOLD;
 import static com.hazelcast.util.collection.ArrayUtils.replaceFirst;
 import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.Matchers.emptyArray;
@@ -283,5 +284,60 @@ public class ArrayUtilsTest extends HazelcastTestSupport {
     @Test(expected = IndexOutOfBoundsException.class)
     public void boundsCheck_whenCapacityIntegerMin() {
         ArrayUtils.boundsCheck(Integer.MIN_VALUE, 0, 100);
+    }
+
+    @Test
+    public void fillObjectArrLengthZero() {
+        String[] arr = new String[0];
+
+        ArrayUtils.fill3(arr, "b");
+    }
+
+    @Test
+    public void fillObjectArrLengthPow2() {
+        String[] arr = new String[1 << 18];
+        Arrays.fill(arr, "a");
+
+        ArrayUtils.fill3(arr, "b");
+
+        for (int i = 0; i < arr.length; i++) {
+            assertEquals("b", arr[i]);
+        }
+    }
+
+    @Test
+    public void fillObjectLengthMultipleThreshold() {
+        String[] arr = new String[4 * FILL_USE_COPY2_THRESHOLD];
+        Arrays.fill(arr, "a");
+
+        ArrayUtils.fill3(arr, "b");
+
+        for (int i = 0; i < arr.length; i++) {
+            assertEquals("b", arr[i]);
+        }
+    }
+
+    @Test
+    public void fillObjectLengthThreshold() {
+        String[] arr = new String[FILL_USE_COPY2_THRESHOLD];
+        Arrays.fill(arr, "a");
+
+        ArrayUtils.fill3(arr, "b");
+
+        for (int i = 0; i < arr.length; i++) {
+            assertEquals("b", arr[i]);
+        }
+    }
+
+    @Test
+    public void fillObjectLength1000() {
+        String[] arr = new String[1000];
+        Arrays.fill(arr, "a");
+
+        ArrayUtils.fill3(arr, "b");
+
+        for (int i = 0; i < arr.length; i++) {
+            assertEquals("b", arr[i]);
+        }
     }
 }

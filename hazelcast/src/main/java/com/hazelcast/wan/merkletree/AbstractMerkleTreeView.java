@@ -23,9 +23,9 @@ abstract class AbstractMerkleTreeView implements MerkleTreeView {
     private static final int MIN_DEPTH = 2;
     private static final int MAX_DEPTH = 27;
 
-    protected final int[] tree;
     protected final int depth;
     protected final int leafLevelOrder;
+    protected final MerkleTreeStorage storage;
 
     AbstractMerkleTreeView(int depth) {
         if (depth < MIN_DEPTH || depth > MAX_DEPTH) {
@@ -36,12 +36,11 @@ abstract class AbstractMerkleTreeView implements MerkleTreeView {
         this.leafLevelOrder = MerkleTreeUtil.getLeftMostNodeOrderOnLevel(depth - 1);
         this.depth = depth;
 
-        final int nodes = MerkleTreeUtil.getNumberOfNodes(depth);
-        this.tree = new int[nodes];
+        storage = new DefaultMerkleTreeStorage(depth);
     }
 
     protected void setNodeHash(int nodeOrder, int hash) {
-        tree[nodeOrder] = hash;
+        storage.setNodeHash(nodeOrder, hash);
     }
 
     @Override

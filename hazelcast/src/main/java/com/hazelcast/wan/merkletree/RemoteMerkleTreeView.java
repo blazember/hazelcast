@@ -23,6 +23,7 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  * remote and local Merkle trees.
  */
 public class RemoteMerkleTreeView extends AbstractMerkleTreeView {
+    protected final int[] tree;
 
     /**
      * Creates the view of a remote Merkle tree with the provided {@code depth}
@@ -34,6 +35,9 @@ public class RemoteMerkleTreeView extends AbstractMerkleTreeView {
      */
     RemoteMerkleTreeView(int[] remoteTreeLeaves, int depth) {
         super(depth);
+
+        final int nodes = MerkleTreeUtil.getNumberOfNodes(depth);
+        this.tree = new int[nodes];
 
         int leafLevel = depth - 1;
         int numberOfLeaves = MerkleTreeUtil.getNodesOnLevel(leafLevel);

@@ -358,7 +358,8 @@ public class ArrayMerkleTreeTest {
     }
 
     protected MerkleTree createMerkleTree(int depth) {
-        return new ArrayMerkleTree(depth);
+        MerkleTreeStorageFactory storageFactory = new DefaultMerkleTreeStorageFactory();
+        return new ArrayMerkleTree(depth, storageFactory);
     }
 
     private void verifyTreesAreSameOnCommonLevels(MerkleTree merkleTreeShallow, MerkleTree merkleTreeDeep) {

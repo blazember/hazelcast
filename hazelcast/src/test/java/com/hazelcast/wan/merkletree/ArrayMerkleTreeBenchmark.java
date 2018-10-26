@@ -124,7 +124,8 @@ public class ArrayMerkleTreeBenchmark {
     }
 
     private ArrayMerkleTree createMerkleTree(CreateInstanceBenchmarkContext context) {
-        ArrayMerkleTree merkleTree = new ArrayMerkleTree(context.depth);
+        MerkleTreeStorageFactory storageFactory = new DefaultMerkleTreeStorageFactory();
+        ArrayMerkleTree merkleTree = new ArrayMerkleTree(context.depth, storageFactory);
         context.merkleTrees.add(merkleTree);
         return merkleTree;
     }
@@ -145,7 +146,8 @@ public class ArrayMerkleTreeBenchmark {
 
         @Setup(Level.Trial)
         public void setUp() {
-            merkleTree = new ArrayMerkleTree(depth);
+            MerkleTreeStorageFactory storageFactory = new DefaultMerkleTreeStorageFactory();
+            merkleTree = new ArrayMerkleTree(depth, storageFactory);
         }
 
         @TearDown(Level.Trial)

@@ -22,8 +22,10 @@ import static com.hazelcast.util.Preconditions.checkTrue;
  * Represents the readonly view of a remote Merkle Tree. Used to compare
  * remote and local Merkle trees.
  */
-public class RemoteMerkleTreeView extends AbstractMerkleTreeView {
-    protected final int[] tree;
+public class RemoteMerkleTreeView implements MerkleTreeView {
+    private final int[] tree;
+    private final int leafLevelOrder;
+    private final int depth;
 
     /**
      * Creates the view of a remote Merkle tree with the provided {@code depth}
@@ -34,7 +36,8 @@ public class RemoteMerkleTreeView extends AbstractMerkleTreeView {
      * @param depth            The depth of the remote tree
      */
     RemoteMerkleTreeView(int[] remoteTreeLeaves, int depth) {
-        super(depth);
+        this.leafLevelOrder = MerkleTreeUtil.getLeftMostNodeOrderOnLevel(depth - 1);
+        this.depth = depth;
 
         final int nodes = MerkleTreeUtil.getNumberOfNodes(depth);
         this.tree = new int[nodes];
@@ -67,5 +70,14 @@ public class RemoteMerkleTreeView extends AbstractMerkleTreeView {
     @Override
     public int getNodeHash(int nodeOrder) {
         return tree[nodeOrder];
+    }
+
+    private void setNodeHash(int nodeOrder, int hash) {
+        tree[nodeOrder] = hash;
+    }
+
+    @Override
+    public int depth() {
+        return depth;
     }
 }

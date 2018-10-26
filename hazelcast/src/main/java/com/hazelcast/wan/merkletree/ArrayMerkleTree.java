@@ -78,12 +78,13 @@ import static com.hazelcast.util.JVMUtil.REFERENCE_COST_IN_BYTES;
  * {@link MerkleTreeUtil#sumHash(int, int)}
  */
 // TODO implement destroy
+// TODO remove key from RecordStoreMutationObserver
 public class ArrayMerkleTree extends AbstractMerkleTreeView implements MerkleTree {
     private final int leafLevel;
 
     @SuppressWarnings("unchecked")
-    public ArrayMerkleTree(int depth) {
-        super(depth);
+    public ArrayMerkleTree(int depth, MerkleTreeStorageFactory storageFactory) {
+        super(depth, storageFactory);
 
         this.leafLevel = depth - 1;
     }

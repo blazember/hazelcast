@@ -27,7 +27,7 @@ abstract class AbstractMerkleTreeView implements MerkleTreeView {
     protected final int leafLevelOrder;
     protected final MerkleTreeStorage storage;
 
-    AbstractMerkleTreeView(int depth) {
+    AbstractMerkleTreeView(int depth, MerkleTreeStorageFactory storageFactory) {
         if (depth < MIN_DEPTH || depth > MAX_DEPTH) {
             throw new IllegalArgumentException("Parameter depth " + depth + " is outside of the allowed range "
                     + MIN_DEPTH + "-" + MAX_DEPTH + ". ");
@@ -36,11 +36,7 @@ abstract class AbstractMerkleTreeView implements MerkleTreeView {
         this.leafLevelOrder = MerkleTreeUtil.getLeftMostNodeOrderOnLevel(depth - 1);
         this.depth = depth;
 
-        storage = new DefaultMerkleTreeStorage(depth);
-    }
-
-    protected void setNodeHash(int nodeOrder, int hash) {
-        storage.setNodeHash(nodeOrder, hash);
+        storage = storageFactory.createStorage(depth);
     }
 
     @Override

@@ -72,7 +72,7 @@ public class ArrayMerkleTreeBenchmark {
         context.merkleTree.updateAdd(anEntry, anEntry);
     }
 
-    @Benchmark
+//    @Benchmark
     public void updateReplace(PreFilledBenchmarkContext context) {
         int key = getAnInt(PREFILL_COUNT);
         int oldValue = key;
@@ -80,7 +80,7 @@ public class ArrayMerkleTreeBenchmark {
         context.merkleTree.updateReplace(key, oldValue, newValue);
     }
 
-    @Benchmark
+//    @Benchmark
     public void updateRemove(PreFilledBenchmarkContext context) {
         int key = getAnInt(PREFILL_COUNT);
         int value = key;
@@ -90,7 +90,7 @@ public class ArrayMerkleTreeBenchmark {
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
     @BenchmarkMode(Mode.SingleShotTime)
     @Measurement(batchSize = 100)
-    @Benchmark
+//    @Benchmark
     public void clear_100(PreFilledBenchmarkContext context) {
         context.merkleTree.clear();
     }
@@ -98,7 +98,7 @@ public class ArrayMerkleTreeBenchmark {
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
     @BenchmarkMode(Mode.SingleShotTime)
     @Measurement(batchSize = 271)
-    @Benchmark
+//    @Benchmark
     public void clear_271(PreFilledBenchmarkContext context) {
         context.merkleTree.clear();
     }
@@ -108,7 +108,7 @@ public class ArrayMerkleTreeBenchmark {
     @Warmup(iterations = 0)
     @Measurement(iterations = 1, batchSize = 100)
     @Fork(jvmArgsAppend = {"-Xms4g", "-Xmx4g"})
-    @Benchmark
+//    @Benchmark
     public ArrayMerkleTree createMerkleTree_100(CreateInstanceBenchmarkContext context) {
         return createMerkleTree(context);
     }
@@ -118,7 +118,7 @@ public class ArrayMerkleTreeBenchmark {
     @Warmup(iterations = 0)
     @Measurement(iterations = 1, batchSize = 271)
     @Fork(jvmArgsAppend = {"-Xms4g", "-Xmx4g"})
-    @Benchmark
+//    @Benchmark
     public ArrayMerkleTree createMerkleTree_271(CreateInstanceBenchmarkContext context) {
         return createMerkleTree(context);
     }

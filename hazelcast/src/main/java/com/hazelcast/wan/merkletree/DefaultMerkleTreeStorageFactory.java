@@ -16,9 +16,13 @@
 
 package com.hazelcast.wan.merkletree;
 
+/**
+ * Default implementation of {@link MerkleTreeStorageFactory} that creates
+ * {@link DefaultMerkleTreeStorage} instances
+ */
 public class DefaultMerkleTreeStorageFactory implements MerkleTreeStorageFactory {
     @Override
     public MerkleTreeStorage createStorage(int depth) {
-        return new DefaultMerkleTreeStorage(depth);
+        return new DefaultMerkleTreeStorage2(depth);
     }
 }

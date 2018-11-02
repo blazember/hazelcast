@@ -29,6 +29,7 @@ import com.hazelcast.config.WanReplicationRef;
 import com.hazelcast.core.IFunction;
 import com.hazelcast.core.PartitioningStrategy;
 import com.hazelcast.internal.serialization.InternalSerializationService;
+import com.hazelcast.map.DefaultVictimCache;
 import com.hazelcast.map.eviction.MapEvictionPolicy;
 import com.hazelcast.map.impl.eviction.EvictionChecker;
 import com.hazelcast.map.impl.eviction.Evictor;
@@ -95,6 +96,7 @@ public class MapContainer {
     protected final InterceptorRegistry interceptorRegistry = new InterceptorRegistry();
     protected final IFunction<Object, Data> toDataFunction = new ObjectToData();
     protected final ConstructorFunction<Void, RecordFactory> recordFactoryConstructor;
+    protected final VictimCache victimCache;
     /**
      * Holds number of registered {@link InvalidationListener} from clients.
      */
@@ -138,7 +140,17 @@ public class MapContainer {
         this.addEventPublishingEnabled = nodeEngine.getProperties().getBoolean(MAP_LOAD_ALL_PUBLISHES_ADDED_EVENT);
         this.mapStoreContext = createMapStoreContext(this);
         this.mapStoreContext.start();
+        this.victimCache = createVictimCache(name, config);
         initEvictor();
+    }
+
+    private DefaultVictimCache createVictimCache(String name, Config config) {
+        String enabled = config.getProperties().getProperty("hazelcast.map.victimcache");
+        return new DefaultVictimCache(name, serializationService, "true".equals(enabled));
+    }
+
+    public VictimCache getVictimCache() {
+        return victimCache;
     }
 
     /**

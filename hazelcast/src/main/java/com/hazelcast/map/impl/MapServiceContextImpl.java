@@ -48,12 +48,12 @@ import com.hazelcast.map.impl.query.AggregationResult;
 import com.hazelcast.map.impl.query.AggregationResultProcessor;
 import com.hazelcast.map.impl.query.CallerRunsAccumulationExecutor;
 import com.hazelcast.map.impl.query.CallerRunsPartitionScanExecutor;
-import com.hazelcast.map.impl.query.QueryEngine;
-import com.hazelcast.map.impl.query.QueryEngineImpl;
 import com.hazelcast.map.impl.query.ParallelAccumulationExecutor;
 import com.hazelcast.map.impl.query.ParallelPartitionScanExecutor;
 import com.hazelcast.map.impl.query.PartitionScanExecutor;
 import com.hazelcast.map.impl.query.PartitionScanRunner;
+import com.hazelcast.map.impl.query.QueryEngine;
+import com.hazelcast.map.impl.query.QueryEngineImpl;
 import com.hazelcast.map.impl.query.QueryResult;
 import com.hazelcast.map.impl.query.QueryResultProcessor;
 import com.hazelcast.map.impl.query.QueryRunner;
@@ -65,6 +65,7 @@ import com.hazelcast.map.impl.recordstore.DefaultRecordStore;
 import com.hazelcast.map.impl.recordstore.EventJournalWriterRecordStoreMutationObserver;
 import com.hazelcast.map.impl.recordstore.RecordStore;
 import com.hazelcast.map.impl.recordstore.RecordStoreMutationObserver;
+import com.hazelcast.map.impl.recordstore.VictimCacheWriterMutationObserver;
 import com.hazelcast.map.listener.MapPartitionLostListener;
 import com.hazelcast.map.merge.MergePolicyProvider;
 import com.hazelcast.monitor.impl.LocalMapStatsImpl;
@@ -851,8 +852,14 @@ class MapServiceContextImpl implements MapServiceContext {
     public Collection<RecordStoreMutationObserver<Record>> createRecordStoreMutationObservers(String mapName, int partitionId) {
         Collection<RecordStoreMutationObserver<Record>> observers = new LinkedList<RecordStoreMutationObserver<Record>>();
         addEventJournalUpdaterObserver(observers, mapName, partitionId);
+        addVictimCacheWriterObserver(observers, mapName, partitionId);
 
         return observers;
+    }
+
+    private void addVictimCacheWriterObserver(Collection<RecordStoreMutationObserver<Record>> observers, String mapName,
+                                              int partitionId) {
+        observers.add(new VictimCacheWriterMutationObserver(getMapContainer(mapName).victimCache, partitionId));
     }
 
     private void addEventJournalUpdaterObserver(Collection<RecordStoreMutationObserver<Record>> observers, String mapName, int

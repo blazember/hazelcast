@@ -29,6 +29,7 @@ import com.hazelcast.map.impl.MapContainer;
 import com.hazelcast.map.impl.MapEntries;
 import com.hazelcast.map.impl.MapKeyLoader;
 import com.hazelcast.map.impl.MapService;
+import com.hazelcast.map.impl.VictimCache;
 import com.hazelcast.map.impl.event.EntryEventData;
 import com.hazelcast.map.impl.iterator.MapEntriesWithCursor;
 import com.hazelcast.map.impl.iterator.MapKeysWithCursor;
@@ -88,6 +89,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
     protected final ILogger logger;
     protected final RecordStoreLoader recordStoreLoader;
     protected final MapKeyLoader keyLoader;
+    protected final VictimCache victimCache;
 
     /**
      * A collection of futures representing pending completion of the key and
@@ -123,6 +125,7 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
         this.keyLoader = keyLoader;
         this.recordStoreLoader = createRecordStoreLoader(mapStoreContext);
         this.partitionService = mapServiceContext.getNodeEngine().getPartitionService();
+        this.victimCache = mapContainer.getVictimCache();
     }
 
     @Override
@@ -322,7 +325,8 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
     @Override
     public Record loadRecordOrNull(Data key, boolean backup, Address callerAddress) {
         Record record = null;
-        Object value = mapDataStore.load(key);
+        Object value = victimCache.load(partitionId, key);
+        value = value != null ? value : mapDataStore.load(key);
         if (value != null) {
             record = createRecord(value, DEFAULT_TTL, DEFAULT_MAX_IDLE, getNow());
             storage.put(key, record);

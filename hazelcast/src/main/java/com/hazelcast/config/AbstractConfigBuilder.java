@@ -39,8 +39,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 
-import static com.hazelcast.config.XmlElements.CONFIG_REPLACERS;
-import static com.hazelcast.config.XmlElements.IMPORT;
+import static com.hazelcast.config.ConfigSections.CONFIG_REPLACERS;
+import static com.hazelcast.config.ConfigSections.IMPORT;
 import static com.hazelcast.util.StringUtil.isNullOrEmpty;
 import static java.lang.String.format;
 

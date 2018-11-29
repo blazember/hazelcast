@@ -16,7 +16,7 @@
 
 package com.hazelcast.config;
 
-enum XmlElements {
+enum ConfigSections {
     HAZELCAST("hazelcast", false),
     INSTANCE_NAME("instance-name", false),
     IMPORT("import", true),
@@ -69,13 +69,13 @@ enum XmlElements {
     final String name;
     final boolean multipleOccurrence;
 
-    XmlElements(String name, boolean multipleOccurrence) {
+    ConfigSections(String name, boolean multipleOccurrence) {
         this.name = name;
         this.multipleOccurrence = multipleOccurrence;
     }
 
     public static boolean canOccurMultipleTimes(String name) {
-        for (XmlElements element : values()) {
+        for (ConfigSections element : values()) {
             if (name.equals(element.name)) {
                 return element.multipleOccurrence;
             }

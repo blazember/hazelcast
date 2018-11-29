@@ -19,36 +19,33 @@ package com.hazelcast.config;
 import com.hazelcast.core.HazelcastException;
 
 /**
- * Support class for the {@link com.hazelcast.config.XmlConfigBuilder} that locates the XML configuration:
+ * Support class for the {@link com.hazelcast.config.YamlConfigBuilder} that locates the YAML configuration:
  * <ol>
  * <li>system property</li>
  * <li>working directory</li>
  * <li>classpath</li>
- * <li>default</li>
  * </ol>
  */
-public class XmlConfigLocator extends AbstractConfigLocator {
+// TODO should we support default config just like for XML config?
+// TODO should this class really be public? XML counterpart is public
+public class YamlConfigLocator extends AbstractConfigLocator {
 
     /**
-     * Constructs a XmlConfigLocator that tries to find a usable XML configuration file.
+     * Constructs a YamlConfigLocator that tries to find a usable YAML configuration file.
      *
      * @throws HazelcastException if there was a problem locating the config-file
      */
-    public XmlConfigLocator() {
+    public YamlConfigLocator() {
         try {
             if (loadFromSystemProperty()) {
                 return;
             }
 
-            if (loadFromWorkingDirectory("hazelcast.xml")) {
+            if (loadFromWorkingDirectory("hazelcast.yaml")) {
                 return;
             }
 
-            if (loadHazelcastConfigFromClasspath("hazelcast.xml")) {
-                return;
-            }
-
-            loadDefaultConfigurationFromClasspath("hazelcast-default.xml");
+            loadHazelcastConfigFromClasspath("hazelcast.yaml");
         } catch (RuntimeException e) {
             throw new HazelcastException(e);
         }

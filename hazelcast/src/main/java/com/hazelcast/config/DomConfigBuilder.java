@@ -16,46 +16,34 @@
 
 package com.hazelcast.config;
 
-import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig;
-import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.DurationConfig;
-import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig;
-import com.hazelcast.config.CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig.ExpiryPolicyType;
-import com.hazelcast.config.EvictionConfig.MaxSizePolicy;
-import com.hazelcast.config.LoginModuleConfig.LoginModuleUsage;
-import com.hazelcast.config.PartitionGroupConfig.MemberGroupType;
-import com.hazelcast.config.PermissionConfig.PermissionType;
-import com.hazelcast.config.UserCodeDeploymentConfig.ClassCacheMode;
-import com.hazelcast.config.UserCodeDeploymentConfig.ProviderMode;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.logging.Logger;
 import com.hazelcast.map.eviction.MapEvictionPolicy;
 import com.hazelcast.mapreduce.TopologyChangedStrategy;
+import com.hazelcast.memory.MemorySize;
+import com.hazelcast.memory.MemoryUnit;
 import com.hazelcast.nio.ClassLoaderUtil;
-import com.hazelcast.nio.IOUtil;
 import com.hazelcast.quorum.QuorumType;
 import com.hazelcast.spi.ServiceConfigurationParser;
 import com.hazelcast.topic.TopicOverloadPolicy;
 import com.hazelcast.util.ExceptionUtil;
-import org.w3c.dom.Document;
+import com.hazelcast.util.StringUtil;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Method;
-import java.net.URL;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -107,192 +95,138 @@ import static com.hazelcast.config.ConfigSections.USER_CODE_DEPLOYMENT;
 import static com.hazelcast.config.ConfigSections.WAN_REPLICATION;
 import static com.hazelcast.config.ConfigSections.canOccurMultipleTimes;
 import static com.hazelcast.config.JobTrackerConfig.DEFAULT_COMMUNICATE_STATS;
-import static com.hazelcast.config.MapStoreConfig.InitialLoadMode;
-import static com.hazelcast.instance.BuildInfoProvider.HAZELCAST_INTERNAL_OVERRIDE_VERSION;
 import static com.hazelcast.internal.config.ConfigValidator.checkCacheConfig;
 import static com.hazelcast.internal.config.ConfigValidator.checkEvictionConfig;
 import static com.hazelcast.util.Preconditions.checkHasText;
-import static com.hazelcast.util.Preconditions.checkNotNull;
-import static com.hazelcast.util.StringUtil.LINE_SEPARATOR;
 import static com.hazelcast.util.StringUtil.isNullOrEmpty;
 import static com.hazelcast.util.StringUtil.lowerCaseInternal;
 import static com.hazelcast.util.StringUtil.upperCaseInternal;
 import static java.lang.Boolean.parseBoolean;
+import static java.lang.Double.parseDouble;
 import static java.lang.Integer.parseInt;
 import static java.lang.Long.parseLong;
+import static java.lang.String.format;
 
-/**
- * A XML {@link ConfigBuilder} implementation.
- */
-public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBuilder {
+public class DomConfigBuilder {
 
-    private static final ILogger LOGGER = Logger.getLogger(XmlConfigBuilder.class);
+    private static final ILogger LOGGER = Logger.getLogger(DomConfigBuilder.class);
 
     private final Set<String> occurrenceSet = new HashSet<String>();
-    private final InputStream in;
+    private final boolean domLevel3 = true;
+    private final Config config;
 
-    private Properties properties = System.getProperties();
-    private File configurationFile;
-    private URL configurationUrl;
-    private Config config;
-
-    /**
-     * Constructs a XmlConfigBuilder that reads from the provided XML file.
-     *
-     * @param xmlFileName the name of the XML file that the XmlConfigBuilder reads from
-     * @throws FileNotFoundException if the file can't be found
-     */
-    public XmlConfigBuilder(String xmlFileName) throws FileNotFoundException {
-        this(new FileInputStream(xmlFileName));
-        this.configurationFile = new File(xmlFileName);
-    }
-
-    /**
-     * Constructs a XmlConfigBuilder that reads from the given InputStream.
-     *
-     * @param inputStream the InputStream containing the XML configuration
-     * @throws IllegalArgumentException if inputStream is {@code null}
-     */
-    public XmlConfigBuilder(InputStream inputStream) {
-        if (inputStream == null) {
-            throw new IllegalArgumentException("inputStream can't be null");
-        }
-        this.in = inputStream;
-    }
-
-    /**
-     * Constructs a XMLConfigBuilder that reads from the given URL.
-     *
-     * @param url the given url that the XMLConfigBuilder reads from
-     * @throws IOException if URL is invalid
-     */
-    public XmlConfigBuilder(URL url) throws IOException {
-        checkNotNull(url, "URL is null!");
-        this.in = url.openStream();
-        this.configurationUrl = url;
-    }
-
-    /**
-     * Constructs a XmlConfigBuilder that tries to find a usable XML configuration file.
-     */
-    public XmlConfigBuilder() {
-        XmlConfigLocator locator = new XmlConfigLocator();
-        this.in = locator.getIn();
-        this.configurationFile = locator.getConfigurationFile();
-        this.configurationUrl = locator.getConfigurationUrl();
-    }
-
-    /**
-     * Gets the current used properties. Can be null if no properties are set.
-     *
-     * @return the current used properties
-     * @see #setProperties(java.util.Properties)
-     */
-    @Override
-    public Properties getProperties() {
-        return properties;
-    }
-
-    /**
-     * Sets the used properties. Can be null if no properties should be used.
-     * <p>
-     * Properties are used to resolve ${variable} occurrences in the XML file.
-     *
-     * @param properties the new properties
-     * @return the XmlConfigBuilder
-     */
-    public XmlConfigBuilder setProperties(Properties properties) {
-        this.properties = properties;
-        return this;
-    }
-
-    @Override
-    protected ConfigType getXmlType() {
-        return ConfigType.SERVER;
-    }
-
-    @Override
-    public Config build() {
-        return build(new Config());
-    }
-
-    Config build(Config config) {
-        config.setConfigurationFile(configurationFile);
-        config.setConfigurationUrl(configurationUrl);
-        try {
-            parseAndBuildConfig(config);
-        } catch (Exception e) {
-            throw ExceptionUtil.rethrow(e);
-        }
-        return config;
-    }
-
-    private void parseAndBuildConfig(Config config) throws Exception {
+    public DomConfigBuilder(Config config) {
         this.config = config;
-        Document doc = parse(in);
-        Element root = doc.getDocumentElement();
-        checkRootElement(root);
-        try {
-            root.getTextContent();
-        } catch (Throwable e) {
-            domLevel3 = false;
-        }
-        process(root);
-        if (shouldValidateTheSchema()) {
-            schemaValidation(root.getOwnerDocument());
-        }
-        handleConfig(root);
     }
 
-    private void checkRootElement(Element root) {
-        String rootNodeName = root.getNodeName();
-        if (!ConfigSections.HAZELCAST.isEqual(rootNodeName)) {
-            throw new InvalidConfigurationException("Invalid root element in xml configuration!"
-                    + " Expected: <" + ConfigSections.HAZELCAST.name + ">, Actual: <" + rootNodeName + ">.");
+    public static Iterable<Node> childElements(Node node) {
+        return new IterableNodeList(node, Node.ELEMENT_NODE);
+    }
+
+    public static Iterable<Node> asElementIterable(NodeList list) {
+        return new IterableNodeList(list, Node.ELEMENT_NODE);
+    }
+
+    private static class IterableNodeList implements Iterable<Node> {
+
+        private final NodeList wrapped;
+        private final int maximum;
+        private final short nodeType;
+
+        IterableNodeList(Node parent, short nodeType) {
+            this(parent.getChildNodes(), nodeType);
+        }
+
+        IterableNodeList(NodeList wrapped, short nodeType) {
+            this.wrapped = wrapped;
+            this.nodeType = nodeType;
+            this.maximum = wrapped.getLength();
+        }
+
+        @Override
+        public Iterator<Node> iterator() {
+            return new Iterator<Node>() {
+                private int index;
+                private Node next;
+
+                public boolean hasNext() {
+                    next = null;
+                    for (; index < maximum; index++) {
+                        final Node item = wrapped.item(index);
+                        if (nodeType == 0 || item.getNodeType() == nodeType) {
+                            next = item;
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+
+                public Node next() {
+                    if (hasNext()) {
+                        index++;
+                        return next;
+                    }
+                    throw new NoSuchElementException();
+                }
+
+                public void remove() {
+                    throw new UnsupportedOperationException();
+                }
+            };
         }
     }
 
-    private boolean shouldValidateTheSchema() {
-        // in case of overridden Hazelcast version there may be no schema with that version
-        // (this feature is used only in Simulator testing)
-        return System.getProperty(HAZELCAST_INTERNAL_OVERRIDE_VERSION) == null;
-    }
-
-    @Override
-    protected Document parse(InputStream is) throws Exception {
-        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(true);
-        dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        DocumentBuilder builder = dbf.newDocumentBuilder();
-        Document doc;
-        try {
-            doc = builder.parse(is);
-        } catch (Exception e) {
-            if (configurationFile != null) {
-                String msg = "Failed to parse " + configurationFile
-                        + LINE_SEPARATOR + "Exception: " + e.getMessage()
-                        + LINE_SEPARATOR + "Hazelcast startup interrupted.";
-                LOGGER.severe(msg);
-
-            } else if (configurationUrl != null) {
-                String msg = "Failed to parse " + configurationUrl
-                        + LINE_SEPARATOR + "Exception: " + e.getMessage()
-                        + LINE_SEPARATOR + "Hazelcast startup interrupted.";
-                LOGGER.severe(msg);
+    protected String getTextContent(final Node node) {
+        if (node != null) {
+            final String text;
+            if (domLevel3) {
+                text = node.getTextContent();
             } else {
-                String msg = "Failed to parse the inputstream"
-                        + LINE_SEPARATOR + "Exception: " + e.getMessage()
-                        + LINE_SEPARATOR + "Hazelcast startup interrupted.";
-                LOGGER.severe(msg);
+                text = getTextContentOld(node);
             }
-            throw new InvalidConfigurationException(e.getMessage(), e);
-        } finally {
-            IOUtil.closeResource(is);
+            return text != null ? text.trim() : "";
         }
-        return doc;
+        return "";
     }
 
-    private void handleConfig(Node docElement) throws Exception {
+    private String getTextContentOld(final Node node) {
+        final Node child = node.getFirstChild();
+        if (child != null) {
+            final Node next = child.getNextSibling();
+            if (next == null) {
+                return hasTextContent(child) ? child.getNodeValue() : "";
+            }
+            final StringBuilder buf = new StringBuilder();
+            appendTextContents(node, buf);
+            return buf.toString();
+        }
+        return "";
+    }
+
+    private void appendTextContents(final Node node, final StringBuilder buf) {
+        Node child = node.getFirstChild();
+        while (child != null) {
+            if (hasTextContent(child)) {
+                buf.append(child.getNodeValue());
+            }
+            child = child.getNextSibling();
+        }
+    }
+
+    protected final boolean hasTextContent(final Node node) {
+        final short nodeType = node.getNodeType();
+        return nodeType != Node.COMMENT_NODE && nodeType != Node.PROCESSING_INSTRUCTION_NODE;
+    }
+
+    public static String cleanNodeName(final Node node) {
+        final String nodeName = node.getLocalName();
+        if (nodeName == null) {
+            throw new HazelcastException("Local node name is null for " + node);
+        }
+        return StringUtil.lowerCaseInternal(nodeName);
+    }
+
+    public void handleConfig(Node docElement) throws Exception {
         for (Node node : childElements(docElement)) {
             String nodeName = cleanNodeName(node);
             if (occurrenceSet.contains(nodeName)) {
@@ -427,11 +361,11 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
             String name = cleanNodeName(n);
             if (classCacheModeName.equals(name)) {
                 String value = getTextContent(n);
-                ClassCacheMode classCacheMode = ClassCacheMode.valueOf(value);
+                UserCodeDeploymentConfig.ClassCacheMode classCacheMode = UserCodeDeploymentConfig.ClassCacheMode.valueOf(value);
                 dcConfig.setClassCacheMode(classCacheMode);
             } else if (providerModeName.equals(name)) {
                 String value = getTextContent(n);
-                ProviderMode providerMode = ProviderMode.valueOf(value);
+                UserCodeDeploymentConfig.ProviderMode providerMode = UserCodeDeploymentConfig.ProviderMode.valueOf(value);
                 dcConfig.setProviderMode(providerMode);
             } else if (blacklistPrefixesName.equals(name)) {
                 String value = getTextContent(n);
@@ -576,11 +510,11 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
                 getAttribute(node, "heartbeat-interval-millis"),
                 ProbabilisticQuorumConfigBuilder.DEFAULT_HEARTBEAT_INTERVAL_MILLIS);
         quorumConfigBuilder = QuorumConfig.newProbabilisticQuorumConfigBuilder(name, quorumSize)
-                .withAcceptableHeartbeatPauseMillis(acceptableHeartPause)
-                .withSuspicionThreshold(threshold)
-                .withHeartbeatIntervalMillis(heartbeatIntervalMillis)
-                .withMinStdDeviationMillis(minStdDeviation)
-                .withMaxSampleSize(maxSampleSize);
+                                          .withAcceptableHeartbeatPauseMillis(acceptableHeartPause)
+                                          .withSuspicionThreshold(threshold)
+                                          .withHeartbeatIntervalMillis(heartbeatIntervalMillis)
+                                          .withMinStdDeviationMillis(minStdDeviation)
+                                          .withMaxSampleSize(maxSampleSize);
         return quorumConfigBuilder;
     }
 
@@ -766,7 +700,6 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
 
         config.addScheduledExecutorConfig(scheduledExecutorConfig);
     }
-
 
     private void handleCardinalityEstimator(Node node) {
         CardinalityEstimatorConfig cardinalityEstimatorConfig = new CardinalityEstimatorConfig();
@@ -1558,12 +1491,12 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
         config.addCacheConfig(cacheConfig);
     }
 
-    private ExpiryPolicyFactoryConfig getExpiryPolicyFactoryConfig(Node node) {
+    private CacheSimpleConfig.ExpiryPolicyFactoryConfig getExpiryPolicyFactoryConfig(Node node) {
         String className = getAttribute(node, "class-name");
         if (!isNullOrEmpty(className)) {
-            return new ExpiryPolicyFactoryConfig(className);
+            return new CacheSimpleConfig.ExpiryPolicyFactoryConfig(className);
         } else {
-            TimedExpiryPolicyFactoryConfig timedExpiryPolicyFactoryConfig = null;
+            CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig timedExpiryPolicyFactoryConfig = null;
             for (Node n : childElements(node)) {
                 String nodeName = cleanNodeName(n);
                 if ("timed-expiry-policy-factory".equals(nodeName)) {
@@ -1575,24 +1508,29 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
                         "One of the \"class-name\" or \"timed-expire-policy-factory\" configuration "
                                 + "is needed for expiry policy factory configuration");
             } else {
-                return new ExpiryPolicyFactoryConfig(timedExpiryPolicyFactoryConfig);
+                return new CacheSimpleConfig.ExpiryPolicyFactoryConfig(timedExpiryPolicyFactoryConfig);
             }
         }
     }
 
-    private TimedExpiryPolicyFactoryConfig getTimedExpiryPolicyFactoryConfig(Node node) {
+    private CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig getTimedExpiryPolicyFactoryConfig(
+            Node node) {
         String expiryPolicyTypeStr = getAttribute(node, "expiry-policy-type");
         String durationAmountStr = getAttribute(node, "duration-amount");
         String timeUnitStr = getAttribute(node, "time-unit");
-        ExpiryPolicyType expiryPolicyType = ExpiryPolicyType.valueOf(upperCaseInternal(expiryPolicyTypeStr));
-        if (expiryPolicyType != ExpiryPolicyType.ETERNAL && (isNullOrEmpty(durationAmountStr) || isNullOrEmpty(timeUnitStr))) {
+        CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig.ExpiryPolicyType expiryPolicyType = CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig.ExpiryPolicyType
+                .valueOf(upperCaseInternal(expiryPolicyTypeStr));
+        if (expiryPolicyType
+                != CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig.ExpiryPolicyType.ETERNAL && (
+                isNullOrEmpty(durationAmountStr) || isNullOrEmpty(timeUnitStr))) {
             throw new InvalidConfigurationException(
                     "Both of the \"duration-amount\" or \"time-unit\" attributes "
                             + "are required for expiry policy factory configuration "
                             + "(except \"ETERNAL\" expiry policy type)");
         }
-        DurationConfig durationConfig = null;
-        if (expiryPolicyType != ExpiryPolicyType.ETERNAL) {
+        CacheSimpleConfig.ExpiryPolicyFactoryConfig.DurationConfig durationConfig = null;
+        if (expiryPolicyType
+                != CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig.ExpiryPolicyType.ETERNAL) {
             long durationAmount;
             try {
                 durationAmount = parseLong(durationAmountStr);
@@ -1611,9 +1549,9 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
                 throw new InvalidConfigurationException(
                         "Invalid value for time unit: " + timeUnitStr, e);
             }
-            durationConfig = new DurationConfig(durationAmount, timeUnit);
+            durationConfig = new CacheSimpleConfig.ExpiryPolicyFactoryConfig.DurationConfig(durationAmount, timeUnit);
         }
-        return new TimedExpiryPolicyFactoryConfig(expiryPolicyType, durationConfig);
+        return new CacheSimpleConfig.ExpiryPolicyFactoryConfig.TimedExpiryPolicyFactoryConfig(expiryPolicyType, durationConfig);
     }
 
     private EvictionConfig getEvictionConfig(Node node, boolean isNearCache) {
@@ -1626,8 +1564,9 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
             evictionConfig.setSize(parseInt(getTextContent(size)));
         }
         if (maxSizePolicy != null) {
-            evictionConfig.setMaximumSizePolicy(MaxSizePolicy.valueOf(upperCaseInternal(getTextContent(maxSizePolicy)))
-            );
+            evictionConfig
+                    .setMaximumSizePolicy(EvictionConfig.MaxSizePolicy.valueOf(upperCaseInternal(getTextContent(maxSizePolicy)))
+                    );
         }
         if (evictionPolicy != null) {
             evictionConfig.setEvictionPolicy(EvictionPolicy.valueOf(upperCaseInternal(getTextContent(evictionPolicy)))
@@ -1851,7 +1790,8 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
             if ("enabled".equals(att.getNodeName())) {
                 mapStoreConfig.setEnabled(getBooleanValue(value));
             } else if ("initial-mode".equals(att.getNodeName())) {
-                InitialLoadMode mode = InitialLoadMode.valueOf(upperCaseInternal(getTextContent(att)));
+                MapStoreConfig.InitialLoadMode mode = MapStoreConfig.InitialLoadMode
+                        .valueOf(upperCaseInternal(getTextContent(att)));
                 mapStoreConfig.setInitialLoadMode(mode);
             }
         }
@@ -2254,9 +2194,9 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
         boolean enabled = enabledNode != null && getBooleanValue(getTextContent(enabledNode));
         config.getPartitionGroupConfig().setEnabled(enabled);
         Node groupTypeNode = attributes.getNamedItem("group-type");
-        MemberGroupType groupType = groupTypeNode != null
-                ? MemberGroupType.valueOf(upperCaseInternal(getTextContent(groupTypeNode)))
-                : MemberGroupType.PER_MEMBER;
+        PartitionGroupConfig.MemberGroupType groupType = groupTypeNode != null
+                ? PartitionGroupConfig.MemberGroupType.valueOf(upperCaseInternal(getTextContent(groupTypeNode)))
+                : PartitionGroupConfig.MemberGroupType.PER_MEMBER;
         config.getPartitionGroupConfig().setGroupType(groupType);
         for (Node child : childElements(node)) {
             if ("member-group".equals(cleanNodeName(child))) {
@@ -2434,8 +2374,9 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
         Node classNameNode = attrs.getNamedItem("class-name");
         String className = getTextContent(classNameNode);
         Node usageNode = attrs.getNamedItem("usage");
-        LoginModuleUsage usage = usageNode != null ? LoginModuleUsage.get(getTextContent(usageNode))
-                : LoginModuleUsage.REQUIRED;
+        LoginModuleConfig.LoginModuleUsage usage =
+                usageNode != null ? LoginModuleConfig.LoginModuleUsage.get(getTextContent(usageNode))
+                        : LoginModuleConfig.LoginModuleUsage.REQUIRED;
         LoginModuleConfig moduleConfig = new LoginModuleConfig(className, usage);
         for (Node child : childElements(node)) {
             String nodeName = cleanNodeName(child);
@@ -2466,51 +2407,51 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
     private void handleSecurityPermissions(Node node) {
         for (Node child : childElements(node)) {
             String nodeName = cleanNodeName(child);
-            PermissionType type;
+            PermissionConfig.PermissionType type;
             if ("map-permission".equals(nodeName)) {
-                type = PermissionType.MAP;
+                type = PermissionConfig.PermissionType.MAP;
             } else if ("queue-permission".equals(nodeName)) {
-                type = PermissionType.QUEUE;
+                type = PermissionConfig.PermissionType.QUEUE;
             } else if ("multimap-permission".equals(nodeName)) {
-                type = PermissionType.MULTIMAP;
+                type = PermissionConfig.PermissionType.MULTIMAP;
             } else if ("topic-permission".equals(nodeName)) {
-                type = PermissionType.TOPIC;
+                type = PermissionConfig.PermissionType.TOPIC;
             } else if ("list-permission".equals(nodeName)) {
-                type = PermissionType.LIST;
+                type = PermissionConfig.PermissionType.LIST;
             } else if ("set-permission".equals(nodeName)) {
-                type = PermissionType.SET;
+                type = PermissionConfig.PermissionType.SET;
             } else if ("lock-permission".equals(nodeName)) {
-                type = PermissionType.LOCK;
+                type = PermissionConfig.PermissionType.LOCK;
             } else if ("atomic-long-permission".equals(nodeName)) {
-                type = PermissionType.ATOMIC_LONG;
+                type = PermissionConfig.PermissionType.ATOMIC_LONG;
             } else if ("countdown-latch-permission".equals(nodeName)) {
-                type = PermissionType.COUNTDOWN_LATCH;
+                type = PermissionConfig.PermissionType.COUNTDOWN_LATCH;
             } else if ("semaphore-permission".equals(nodeName)) {
-                type = PermissionType.SEMAPHORE;
+                type = PermissionConfig.PermissionType.SEMAPHORE;
             } else if ("id-generator-permission".equals(nodeName)) {
-                type = PermissionType.ID_GENERATOR;
+                type = PermissionConfig.PermissionType.ID_GENERATOR;
             } else if ("flake-id-generator-permission".equals(nodeName)) {
-                type = PermissionType.FLAKE_ID_GENERATOR;
+                type = PermissionConfig.PermissionType.FLAKE_ID_GENERATOR;
             } else if ("executor-service-permission".equals(nodeName)) {
-                type = PermissionType.EXECUTOR_SERVICE;
+                type = PermissionConfig.PermissionType.EXECUTOR_SERVICE;
             } else if ("transaction-permission".equals(nodeName)) {
-                type = PermissionType.TRANSACTION;
+                type = PermissionConfig.PermissionType.TRANSACTION;
             } else if ("all-permissions".equals(nodeName)) {
-                type = PermissionType.ALL;
+                type = PermissionConfig.PermissionType.ALL;
             } else if ("durable-executor-service-permission".equals(nodeName)) {
-                type = PermissionType.DURABLE_EXECUTOR_SERVICE;
+                type = PermissionConfig.PermissionType.DURABLE_EXECUTOR_SERVICE;
             } else if ("cardinality-estimator-permission".equals(nodeName)) {
-                type = PermissionType.CARDINALITY_ESTIMATOR;
+                type = PermissionConfig.PermissionType.CARDINALITY_ESTIMATOR;
             } else if ("scheduled-executor-permission".equals(nodeName)) {
-                type = PermissionType.SCHEDULED_EXECUTOR;
+                type = PermissionConfig.PermissionType.SCHEDULED_EXECUTOR;
             } else if ("pn-counter-permission".equals(nodeName)) {
-                type = PermissionType.PN_COUNTER;
+                type = PermissionConfig.PermissionType.PN_COUNTER;
             } else if ("cache-permission".equals(nodeName)) {
-                type = PermissionType.CACHE;
+                type = PermissionConfig.PermissionType.CACHE;
             } else if ("user-code-deployment".equals(nodeName)) {
-                type = PermissionType.USER_CODE_DEPLOYMENT;
-            } else if (PermissionType.CONFIG.getNodeName().equals(nodeName)) {
-                type = PermissionType.CONFIG;
+                type = PermissionConfig.PermissionType.USER_CODE_DEPLOYMENT;
+            } else if (PermissionConfig.PermissionType.CONFIG.getNodeName().equals(nodeName)) {
+                type = PermissionConfig.PermissionType.CONFIG;
             } else {
                 continue;
             }
@@ -2518,7 +2459,7 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
         }
     }
 
-    private void handleSecurityPermission(Node node, PermissionType type) {
+    private void handleSecurityPermission(Node node, PermissionConfig.PermissionType type) {
         SecurityConfig cfg = config.getSecurityConfig();
         NamedNodeMap attrs = node.getAttributes();
         Node nameNode = attrs.getNamedItem("name");
@@ -2554,4 +2495,278 @@ public class XmlConfigBuilder extends AbstractConfigBuilder implements ConfigBui
             }
         }
     }
+
+    protected void fillNativeMemoryConfig(Node node, NativeMemoryConfig nativeMemoryConfig) {
+        final NamedNodeMap atts = node.getAttributes();
+        final Node enabledNode = atts.getNamedItem("enabled");
+        final boolean enabled = enabledNode != null && getBooleanValue(getTextContent(enabledNode).trim());
+        nativeMemoryConfig.setEnabled(enabled);
+
+        final Node allocTypeNode = atts.getNamedItem("allocator-type");
+        final String allocType = getTextContent(allocTypeNode);
+        if (allocType != null && !"".equals(allocType)) {
+            nativeMemoryConfig.setAllocatorType(
+                    NativeMemoryConfig.MemoryAllocatorType.valueOf(upperCaseInternal(allocType)));
+        }
+
+        for (Node n : childElements(node)) {
+            final String nodeName = cleanNodeName(n);
+            if ("size".equals(nodeName)) {
+                final NamedNodeMap attrs = n.getAttributes();
+                final String value = getTextContent(attrs.getNamedItem("value"));
+                final MemoryUnit unit = MemoryUnit.valueOf(getTextContent(attrs.getNamedItem("unit")));
+                MemorySize memorySize = new MemorySize(Long.parseLong(value), unit);
+                nativeMemoryConfig.setSize(memorySize);
+            } else if ("min-block-size".equals(nodeName)) {
+                String value = getTextContent(n);
+                nativeMemoryConfig.setMinBlockSize(Integer.parseInt(value));
+            } else if ("page-size".equals(nodeName)) {
+                String value = getTextContent(n);
+                nativeMemoryConfig.setPageSize(Integer.parseInt(value));
+            } else if ("metadata-space-percentage".equals(nodeName)) {
+                String value = getTextContent(n);
+                nativeMemoryConfig.setMetadataSpacePercentage(Float.parseFloat(value));
+            }
+        }
+    }
+
+    protected static boolean getBooleanValue(final String value) {
+        return parseBoolean(StringUtil.lowerCaseInternal(value));
+    }
+
+    protected static int getIntegerValue(final String parameterName, final String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (final NumberFormatException e) {
+            throw new InvalidConfigurationException(format("Invalid integer value for parameter %s: %s", parameterName, value));
+        }
+    }
+
+    protected static int getIntegerValue(final String parameterName, final String value, int defaultValue) {
+        if (isNullOrEmpty(value)) {
+            return defaultValue;
+        }
+        return getIntegerValue(parameterName, value);
+    }
+
+    protected static long getLongValue(final String parameterName, final String value) {
+        try {
+            return Long.parseLong(value);
+        } catch (final Exception e) {
+            throw new InvalidConfigurationException(
+                    format("Invalid long integer value for parameter %s: %s", parameterName, value));
+        }
+    }
+
+    protected static long getLongValue(final String parameterName, final String value, long defaultValue) {
+        if (isNullOrEmpty(value)) {
+            return defaultValue;
+        }
+        return getLongValue(parameterName, value);
+    }
+
+    protected static double getDoubleValue(final String parameterName, final String value) {
+        try {
+            return parseDouble(value);
+        } catch (final Exception e) {
+            throw new InvalidConfigurationException(
+                    format("Invalid long integer value for parameter %s: %s", parameterName, value));
+        }
+    }
+
+    protected static double getDoubleValue(final String parameterName, final String value, double defaultValue) {
+        if (isNullOrEmpty(value)) {
+            return defaultValue;
+        }
+        return getDoubleValue(parameterName, value);
+    }
+
+    protected String getAttribute(Node node, String attName) {
+        final Node attNode = node.getAttributes().getNamedItem(attName);
+        if (attNode == null) {
+            return null;
+        }
+        return getTextContent(attNode);
+    }
+
+    protected void fillProperties(final Node node, Properties properties) {
+        if (properties == null) {
+            return;
+        }
+        for (Node n : childElements(node)) {
+            final String name = cleanNodeName(n);
+            final String propertyName = "property".equals(name)
+                    ? getTextContent(n.getAttributes().getNamedItem("name")).trim()
+                    // old way - probably should be deprecated
+                    : name;
+            final String value = getTextContent(n).trim();
+            properties.setProperty(propertyName, value);
+        }
+    }
+
+    protected void fillProperties(final Node node, Map<String, Comparable> properties) {
+        if (properties == null) {
+            return;
+        }
+        for (Node n : childElements(node)) {
+            if (n.getNodeType() == Node.TEXT_NODE || n.getNodeType() == Node.COMMENT_NODE) {
+                continue;
+            }
+            final String name = cleanNodeName(n);
+            final String propertyName;
+            if ("property".equals(name)) {
+                propertyName = getTextContent(n.getAttributes().getNamedItem("name")).trim();
+            } else {
+                // old way - probably should be deprecated
+                propertyName = name;
+            }
+            final String value = getTextContent(n).trim();
+            properties.put(propertyName, value);
+        }
+    }
+
+    protected SerializationConfig parseSerialization(final Node node) {
+        SerializationConfig serializationConfig = new SerializationConfig();
+        for (Node child : childElements(node)) {
+            final String name = cleanNodeName(child);
+            if ("portable-version".equals(name)) {
+                String value = getTextContent(child);
+                serializationConfig.setPortableVersion(getIntegerValue(name, value));
+            } else if ("check-class-def-errors".equals(name)) {
+                String value = getTextContent(child);
+                serializationConfig.setCheckClassDefErrors(getBooleanValue(value));
+            } else if ("use-native-byte-order".equals(name)) {
+                serializationConfig.setUseNativeByteOrder(getBooleanValue(getTextContent(child)));
+            } else if ("byte-order".equals(name)) {
+                String value = getTextContent(child);
+                ByteOrder byteOrder = null;
+                if (ByteOrder.BIG_ENDIAN.toString().equals(value)) {
+                    byteOrder = ByteOrder.BIG_ENDIAN;
+                } else if (ByteOrder.LITTLE_ENDIAN.toString().equals(value)) {
+                    byteOrder = ByteOrder.LITTLE_ENDIAN;
+                }
+                serializationConfig.setByteOrder(byteOrder != null ? byteOrder : ByteOrder.BIG_ENDIAN);
+            } else if ("enable-compression".equals(name)) {
+                serializationConfig.setEnableCompression(getBooleanValue(getTextContent(child)));
+            } else if ("enable-shared-object".equals(name)) {
+                serializationConfig.setEnableSharedObject(getBooleanValue(getTextContent(child)));
+            } else if ("allow-unsafe".equals(name)) {
+                serializationConfig.setAllowUnsafe(getBooleanValue(getTextContent(child)));
+            } else if ("data-serializable-factories".equals(name)) {
+                fillDataSerializableFactories(child, serializationConfig);
+            } else if ("portable-factories".equals(name)) {
+                fillPortableFactories(child, serializationConfig);
+            } else if ("serializers".equals(name)) {
+                fillSerializers(child, serializationConfig);
+            } else if ("java-serialization-filter".equals(name)) {
+                fillJavaSerializationFilter(child, serializationConfig);
+            }
+        }
+        return serializationConfig;
+    }
+
+    protected void fillDataSerializableFactories(Node node, SerializationConfig serializationConfig) {
+        for (Node child : childElements(node)) {
+            final String name = cleanNodeName(child);
+            if ("data-serializable-factory".equals(name)) {
+                final String value = getTextContent(child);
+                final Node factoryIdNode = child.getAttributes().getNamedItem("factory-id");
+                if (factoryIdNode == null) {
+                    throw new IllegalArgumentException(
+                            "'factory-id' attribute of 'data-serializable-factory' is required!");
+                }
+                int factoryId = Integer.parseInt(getTextContent(factoryIdNode));
+                serializationConfig.addDataSerializableFactoryClass(factoryId, value);
+            }
+        }
+    }
+
+    protected void fillPortableFactories(Node node, SerializationConfig serializationConfig) {
+        for (Node child : childElements(node)) {
+            final String name = cleanNodeName(child);
+            if ("portable-factory".equals(name)) {
+                final String value = getTextContent(child);
+                final Node factoryIdNode = child.getAttributes().getNamedItem("factory-id");
+                if (factoryIdNode == null) {
+                    throw new IllegalArgumentException("'factory-id' attribute of 'portable-factory' is required!");
+                }
+                int factoryId = Integer.parseInt(getTextContent(factoryIdNode));
+                serializationConfig.addPortableFactoryClass(factoryId, value);
+            }
+        }
+    }
+
+    protected void fillSerializers(final Node node, SerializationConfig serializationConfig) {
+        for (Node child : childElements(node)) {
+            final String name = cleanNodeName(child);
+            final String value = getTextContent(child);
+            if ("serializer".equals(name)) {
+                SerializerConfig serializerConfig = new SerializerConfig();
+                final String typeClassName = getAttribute(child, "type-class");
+                final String className = getAttribute(child, "class-name");
+                serializerConfig.setTypeClassName(typeClassName);
+                serializerConfig.setClassName(className);
+                serializationConfig.addSerializerConfig(serializerConfig);
+            } else if ("global-serializer".equals(name)) {
+                GlobalSerializerConfig globalSerializerConfig = new GlobalSerializerConfig();
+                globalSerializerConfig.setClassName(value);
+                String attrValue = getAttribute(child, "override-java-serialization");
+                boolean overrideJavaSerialization = attrValue != null && getBooleanValue(attrValue.trim());
+                globalSerializerConfig.setOverrideJavaSerialization(overrideJavaSerialization);
+                serializationConfig.setGlobalSerializerConfig(globalSerializerConfig);
+            }
+        }
+    }
+
+    protected void fillJavaSerializationFilter(final Node node, SerializationConfig serializationConfig) {
+        JavaSerializationFilterConfig filterConfig = new JavaSerializationFilterConfig();
+        serializationConfig.setJavaSerializationFilterConfig(filterConfig);
+        Node defaultsDisabledNode = node.getAttributes().getNamedItem("defaults-disabled");
+        boolean defaultsDisabled = defaultsDisabledNode != null && getBooleanValue(getTextContent(defaultsDisabledNode));
+        filterConfig.setDefaultsDisabled(defaultsDisabled);
+        for (Node child : childElements(node)) {
+            final String name = cleanNodeName(child);
+            if ("blacklist".equals(name)) {
+                ClassFilter list = parseClassFilterList(child);
+                filterConfig.setBlacklist(list);
+            } else if ("whitelist".equals(name)) {
+                ClassFilter list = parseClassFilterList(child);
+                filterConfig.setWhitelist(list);
+            }
+        }
+    }
+
+    private ClassFilter parseClassFilterList(Node node) {
+        ClassFilter list = new ClassFilter();
+        for (Node child : childElements(node)) {
+            final String name = cleanNodeName(child);
+            if ("class".equals(name)) {
+                list.addClasses(getTextContent(child));
+            } else if ("package".equals(name)) {
+                list.addPackages(getTextContent(child));
+            } else if ("prefix".equals(name)) {
+                list.addPrefixes(getTextContent(child));
+            }
+        }
+        return list;
+    }
+
+    protected SocketInterceptorConfig parseSocketInterceptorConfig(final Node node) {
+        SocketInterceptorConfig socketInterceptorConfig = new SocketInterceptorConfig();
+        final NamedNodeMap atts = node.getAttributes();
+        final Node enabledNode = atts.getNamedItem("enabled");
+        final boolean enabled = enabledNode != null && getBooleanValue(getTextContent(enabledNode).trim());
+        socketInterceptorConfig.setEnabled(enabled);
+
+        for (Node n : childElements(node)) {
+            final String nodeName = cleanNodeName(n);
+            if ("class-name".equals(nodeName)) {
+                socketInterceptorConfig.setClassName(getTextContent(n).trim());
+            } else if ("properties".equals(nodeName)) {
+                fillProperties(n, socketInterceptorConfig.getProperties());
+            }
+        }
+        return socketInterceptorConfig;
+    }
+
 }

@@ -112,11 +112,13 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = IllegalArgumentException.class)
     public void testConfiguration_withNullInputStream() {
         new YamlConfigBuilder((InputStream) null);
     }
 
     @Override
+    @Test(expected = InvalidConfigurationException.class)
     public void testInvalidRootElement() {
         String yaml = ""
                 + "hazelcast-client:\n"
@@ -127,6 +129,7 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = InvalidConfigurationException.class)
     public void testJoinValidation() {
         String yaml = ""
                 + "hazelcast:\n"
@@ -1661,6 +1664,7 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = InvalidConfigurationException.class)
     public void testParseExceptionIsNotSwallowed() {
         String invalidYaml = "invalid-yaml";
         buildConfig(invalidYaml);
@@ -1969,6 +1973,7 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = ConfigurationException.class)
     public void testQuorumConfig_whenClassNameAndRecentlyActiveQuorumDefined_exceptionIsThrown() {
         String yaml = ""
                 + "hazelcast:\n"
@@ -1983,6 +1988,7 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = ConfigurationException.class)
     public void testQuorumConfig_whenClassNameAndProbabilisticQuorumDefined_exceptionIsThrown() {
         String yaml = ""
                 + "hazelcast:\n"
@@ -2281,6 +2287,7 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = InvalidConfigurationException.class)
     public void testCardinalityEstimatorConfigWithInvalidMergePolicy() {
         String yaml = ""
                 + "hazelcast:\n"
@@ -2630,6 +2637,7 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = IllegalArgumentException.class)
     public void testAttributeConfig_noName_emptyTag() {
         String yaml = ""
                 + "hazelcast:\n"
@@ -2647,6 +2655,7 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = IllegalArgumentException.class)
     public void testAttributeConfig_noName_singleTag() {
         String yaml = ""
                 + "hazelcast:\n"
@@ -2658,6 +2667,7 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = IllegalArgumentException.class)
     public void testAttributeConfig_noExtractor() {
         String yaml = ""
                 + "hazelcast:\n"
@@ -2669,6 +2679,7 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = IllegalArgumentException.class)
     public void testAttributeConfig_emptyExtractor() {
         String yaml = ""
                 + "hazelcast:\n"
@@ -2812,6 +2823,7 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = InvalidConfigurationException.class)
     public void testDuplicateLiteMemberConfig() {
         String yaml = ""
                 + "hazelcast:\n"
@@ -3071,6 +3083,7 @@ public class YamlConfigBuilderTest extends AbstractConfigBuilderTest {
     }
 
     @Override
+    @Test(expected = InvalidConfigurationException.class)
     public void testCacheConfig_withInvalidEvictionConfig_failsFast() {
         String yaml = ""
                 + "hazelcast:\n"

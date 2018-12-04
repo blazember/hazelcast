@@ -969,5 +969,4 @@
     </jobtracker>
 
     <lite-member enabled="true"/>
-
 </hazelcast>

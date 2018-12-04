@@ -298,5 +298,4 @@ public class YamlConfigBuilder implements ConfigBuilder {
             }
         }
     }
-
 }

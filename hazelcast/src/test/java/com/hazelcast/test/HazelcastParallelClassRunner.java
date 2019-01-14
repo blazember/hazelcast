@@ -18,6 +18,7 @@ package com.hazelcast.test;
 
 import com.hazelcast.internal.util.RuntimeAvailableProcessors;
 import com.hazelcast.test.annotation.ConfigureParallelRunnerWith;
+import com.hazelcast.util.RandomPicker;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
@@ -30,6 +31,8 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.Writer;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Constructor;
 import java.util.Collection;
 import java.util.Enumeration;
@@ -37,6 +40,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 
 import static java.lang.Math.max;
 import static java.lang.Math.min;
@@ -50,6 +54,7 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
 
     private static final boolean SPAWN_MULTIPLE_THREADS = TestEnvironment.isMockNetwork();
     private static final int DEFAULT_MAX_THREADS = getDefaultMaxThreads();
+    private final ThreadMXBean threadMXBean;
 
     static {
         boolean multipleJVM = Boolean.getBoolean("multipleJVM");
@@ -78,11 +83,13 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
     public HazelcastParallelClassRunner(Class<?> clazz) throws InitializationError {
         super(clazz);
         maxThreads = getMaxThreads(clazz);
+        threadMXBean = ManagementFactory.getThreadMXBean();
     }
 
     public HazelcastParallelClassRunner(Class<?> clazz, Object[] parameters, String name) throws InitializationError {
         super(clazz, parameters, name);
         maxThreads = getMaxThreads(clazz);
+        threadMXBean = ManagementFactory.getThreadMXBean();
     }
 
     private int getMaxThreads(Class<?> clazz) throws InitializationError {
@@ -107,7 +114,13 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
 
     @Override
     protected void runChild(final FrameworkMethod method, final RunNotifier notifier) {
-        while (numThreads.get() >= maxThreads) {
+        int randomSleep = RandomPicker.getInt(0, 10000000);
+        LockSupport.parkNanos(randomSleep);
+        while (numThreads.get() >= maxThreads || jvmThreadCount() > 1000) {
+            String message = String.format("***** Backing off. num-threads: %d[%d], jvmThreadCount: %d[1000]", numThreads.get()
+                    , maxThreads, jvmThreadCount());
+            System.out.println(message);
+
             try {
                 Thread.sleep(25);
             } catch (InterruptedException e) {
@@ -116,7 +129,19 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
             }
         }
         numThreads.incrementAndGet();
+        String message = String.format("***** [%s] [%d] jvmThreadCount: %d, max: %d", method.getName(), System
+                        .currentTimeMillis(),
+                jvmThreadCount(), threadMXBean.getPeakThreadCount());
+        System.out.println(message);
         new Thread(new TestRunner(method, notifier)).start();
+    }
+
+    private int jvmThreadCount() {
+        if (threadMXBean != null) {
+            return threadMXBean.getThreadCount();
+        }
+
+        return 100;
     }
 
     @Override
@@ -158,6 +183,16 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
             setThreadLocalTestMethodName(testName);
             try {
                 long start = System.currentTimeMillis();
+
+                // wait if the jvm is running too many threads
+                while (jvmThreadCount() > 200) {
+                    String msg = String.format("***** Waiting with [%s] for a relaxed JVM. Current thread count: %d,peak: %d",
+                            method.getName(), jvmThreadCount(), threadMXBean.getPeakThreadCount());
+                    System.out.println(msg);
+                    int randomSleep = RandomPicker.getInt(0, 10000000);
+                    LockSupport.parkNanos(randomSleep);
+                }
+
                 System.out.println("Started Running Test: " + testName);
                 HazelcastParallelClassRunner.super.runChild(method, notifier);
                 numThreads.decrementAndGet();

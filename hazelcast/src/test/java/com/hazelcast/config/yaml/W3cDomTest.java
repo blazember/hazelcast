@@ -20,6 +20,7 @@ import com.hazelcast.internal.yaml.YamlLoader;
 import com.hazelcast.internal.yaml.YamlNode;
 import com.hazelcast.internal.yaml.YamlTest;
 import com.hazelcast.test.HazelcastParallelClassRunner;
+import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.QuickTest;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -52,6 +53,8 @@ public class W3cDomTest {
 
     @Test
     public void testYamlExtendedTestFromInputStream() {
+
+
         InputStream inputStream = YamlTest.class.getClassLoader().getResourceAsStream("yaml-test-root-map-extended.yaml");
         YamlNode yamlRoot = YamlLoader.load(inputStream, "root-map");
         Node domRoot = W3cDomUtil.asW3cNode(yamlRoot);

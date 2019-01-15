@@ -70,9 +70,9 @@ public class JitterRule implements TestRule {
     private static final boolean ENABLED = isEnabled();
 
     static {
-        if (ENABLED) {
+        //        if (ENABLED) {
             JitterMonitor.ensureRunning();
-        }
+        //        }
     }
 
     private static boolean isEnabled() {

@@ -32,6 +32,7 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.Writer;
 import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.ThreadMXBean;
 import java.lang.reflect.Constructor;
 import java.util.Collection;
@@ -46,6 +47,7 @@ import static java.lang.Math.max;
 import static java.lang.Math.min;
 import static java.lang.Runtime.getRuntime;
 import static java.lang.String.format;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 /**
  * Runs the test methods in parallel with multiple threads.
@@ -55,6 +57,7 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
     private static final boolean SPAWN_MULTIPLE_THREADS = TestEnvironment.isMockNetwork();
     private static final int DEFAULT_MAX_THREADS = getDefaultMaxThreads();
     private final ThreadMXBean threadMXBean;
+    private final OperatingSystemMXBean osMXBean;
 
     static {
         boolean multipleJVM = Boolean.getBoolean("multipleJVM");
@@ -84,12 +87,14 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
         super(clazz);
         maxThreads = getMaxThreads(clazz);
         threadMXBean = ManagementFactory.getThreadMXBean();
+        osMXBean = ManagementFactory.getOperatingSystemMXBean();
     }
 
     public HazelcastParallelClassRunner(Class<?> clazz, Object[] parameters, String name) throws InitializationError {
         super(clazz, parameters, name);
         maxThreads = getMaxThreads(clazz);
         threadMXBean = ManagementFactory.getThreadMXBean();
+        osMXBean = ManagementFactory.getOperatingSystemMXBean();
     }
 
     private int getMaxThreads(Class<?> clazz) throws InitializationError {
@@ -114,13 +119,7 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
 
     @Override
     protected void runChild(final FrameworkMethod method, final RunNotifier notifier) {
-        int randomSleep = RandomPicker.getInt(0, 10000000);
-        LockSupport.parkNanos(randomSleep);
-        while (numThreads.get() >= maxThreads || jvmThreadCount() > 1000) {
-            String message = String.format("***** Backing off. num-threads: %d[%d], jvmThreadCount: %d[1000]", numThreads.get()
-                    , maxThreads, jvmThreadCount());
-            System.out.println(message);
-
+        while (numThreads.get() >= maxThreads) {
             try {
                 Thread.sleep(25);
             } catch (InterruptedException e) {
@@ -129,10 +128,6 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
             }
         }
         numThreads.incrementAndGet();
-        String message = String.format("***** [%s] [%d] jvmThreadCount: %d, max: %d", method.getName(), System
-                        .currentTimeMillis(),
-                jvmThreadCount(), threadMXBean.getPeakThreadCount());
-        System.out.println(message);
         new Thread(new TestRunner(method, notifier)).start();
     }
 
@@ -182,24 +177,61 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
             String testName = testName(method);
             setThreadLocalTestMethodName(testName);
             try {
-                long start = System.currentTimeMillis();
-
-                // wait if the jvm is running too many threads
-                while (jvmThreadCount() > 200) {
-                    String msg = String.format("***** Waiting with [%s] for a relaxed JVM. Current thread count: %d,peak: %d",
-                            method.getName(), jvmThreadCount(), threadMXBean.getPeakThreadCount());
-                    System.out.println(msg);
-                    int randomSleep = RandomPicker.getInt(0, 10000000);
-                    LockSupport.parkNanos(randomSleep);
-                }
+                // ensureModerateJvmThreadCount();
+                //                ensureModerateLoad1();
 
                 System.out.println("Started Running Test: " + testName);
+                long start = System.currentTimeMillis();
                 HazelcastParallelClassRunner.super.runChild(method, notifier);
+                long end = System.currentTimeMillis();
                 numThreads.decrementAndGet();
                 float took = (float) (System.currentTimeMillis() - start) / 1000;
                 System.out.println(format("Finished Running Test: %s in %.3f seconds.", testName, took));
+                System.out.println(String.format("Test times for [%s.%s]: %d, %d, %d",
+                        method.getDeclaringClass().getSimpleName(), testName, start, end, (end - start)));
             } finally {
                 removeThreadLocalTestMethodName();
+            }
+        }
+
+        private void ensureModerateLoad1() {
+            double peakOsLoad1 = 0D;
+
+            double osLoad1Threshold = osMXBean.getAvailableProcessors() * 0.8D;
+            // wait if the jvm is running too many threads
+            while (osMXBean.getSystemLoadAverage() > osLoad1Threshold) {
+                double currOsLoad1 = osMXBean.getSystemLoadAverage();
+                if (currOsLoad1 > peakOsLoad1) {
+                    peakOsLoad1 = currOsLoad1;
+                    String testName = method.getDeclaringClass().getSimpleName() + "." + method.getName();
+                    String msg = String.format("Waiting with [%s] for the OS load1 to fall back under %f. "
+                                    + "Current load1: %f, peak load1: %f",
+                            testName, osLoad1Threshold, currOsLoad1, peakOsLoad1);
+                    System.out.println(msg);
+                }
+                int randomSleep = RandomPicker.getInt(1, 25);
+                LockSupport.parkNanos(MILLISECONDS.toNanos(randomSleep));
+            }
+        }
+
+        private void ensureModerateJvmThreadCount() {
+            int jvmPeakThreadCount = 0;
+
+            int threadCountThreshold = 500;
+            // wait if the jvm is running too many threads
+            while (jvmThreadCount() > threadCountThreshold) {
+                int currJvmThreadCount = threadMXBean.getThreadCount();
+                int currJvmPeakThreadCount = threadMXBean.getPeakThreadCount();
+                if (currJvmPeakThreadCount > jvmPeakThreadCount) {
+                    jvmPeakThreadCount = currJvmPeakThreadCount;
+                    String testName = method.getDeclaringClass().getSimpleName() + "." + method.getName();
+                    String msg = String.format("Waiting with [%s] for the JVM to run not more than %d threads. "
+                                    + "Current thread count: %d, peak thread count: %d",
+                            testName, threadCountThreshold, currJvmThreadCount, jvmPeakThreadCount);
+                    System.out.println(msg);
+                }
+                int randomSleep = RandomPicker.getInt(1, 25);
+                LockSupport.parkNanos(MILLISECONDS.toNanos(randomSleep));
             }
         }
     }

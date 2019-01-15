@@ -16,6 +16,13 @@
 
 package com.hazelcast.test.jitter;
 
+import org.influxdb.BatchOptions;
+import org.influxdb.InfluxDB;
+import org.influxdb.InfluxDBFactory;
+import org.influxdb.dto.Point;
+
+import java.util.concurrent.TimeUnit;
+
 import static com.hazelcast.test.jitter.JitterRule.RESOLUTION_NANOS;
 import static java.lang.Math.min;
 import static java.util.concurrent.locks.LockSupport.parkNanos;
@@ -23,12 +30,23 @@ import static java.util.concurrent.locks.LockSupport.parkNanos;
 public class JitterThread extends Thread {
 
     private final JitterRecorder jitterRecorder;
+    private final InfluxDB influxDB;
 
     JitterThread(JitterRecorder jitterRecorder) {
         this.jitterRecorder = jitterRecorder;
 
         setName("JitterThread");
         setDaemon(true);
+
+        influxDB = InfluxDBFactory.connect("http://127.0.0.1:8086", "hiccup", "hiccup");
+        influxDB.setDatabase("hiccup");
+        influxDB.setRetentionPolicy("autogen");
+
+        influxDB.enableBatch(BatchOptions.DEFAULTS
+                .bufferLimit(100)
+                .actions(100)
+        );
+
     }
 
     public void run() {
@@ -47,6 +65,11 @@ public class JitterThread extends Thread {
             currentHiccup -= shortestHiccup;
 
             jitterRecorder.recordPause(beforeMillis, currentHiccup);
+            influxDB.write(Point.measurement("hiccups")
+                                .time(beforeMillis, TimeUnit.MILLISECONDS)
+                                .addField("value", currentHiccup)
+                                .build());
+
             beforeNanos = after;
         }
     }

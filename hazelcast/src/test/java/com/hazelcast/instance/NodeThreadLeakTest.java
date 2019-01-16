@@ -30,6 +30,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -45,6 +46,7 @@ import static org.junit.Assert.fail;
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({DefaultNodeContext.class, NodeEngineImpl.class})
 @Category(QuickTest.class)
+@PowerMockIgnore("javax.net.ssl.*")
 public class NodeThreadLeakTest extends HazelcastTestSupport {
 
     private static final HazelcastException HAZELCAST_EXCEPTION

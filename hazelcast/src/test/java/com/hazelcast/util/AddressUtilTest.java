@@ -26,18 +26,20 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 import org.powermock.modules.junit4.PowerMockRunnerDelegate;
+
 import java.net.Inet6Address;
+import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.net.InetAddress;
-import java.util.Collections;
 import java.util.Collection;
-import java.util.Vector;
+import java.util.Collections;
 import java.util.Enumeration;
+import java.util.Vector;
 
 import static com.hazelcast.util.AddressUtil.AddressHolder;
 import static java.util.Arrays.asList;
@@ -46,9 +48,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
 /**
@@ -58,6 +60,7 @@ import static org.mockito.Mockito.when;
 @PowerMockRunnerDelegate(HazelcastSerialClassRunner.class)
 @PrepareForTest({Inet6Address.class, AddressUtil.class, NetworkInterface.class})
 @Category(QuickTest.class)
+@PowerMockIgnore("javax.net.ssl.*")
 public class AddressUtilTest extends HazelcastTestSupport {
 
     @Test

@@ -21,16 +21,23 @@ import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBFactory;
 import org.influxdb.dto.Point;
 
-import java.util.concurrent.TimeUnit;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import static com.hazelcast.test.jitter.JitterRule.RESOLUTION_NANOS;
 import static java.lang.Math.min;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.locks.LockSupport.parkNanos;
 
 public class JitterThread extends Thread {
 
     private final JitterRecorder jitterRecorder;
+    private final BlockingQueue<Jitter> jitterQueue;
     private final InfluxDB influxDB;
+    private final String machine;
+
 
     JitterThread(JitterRecorder jitterRecorder) {
         this.jitterRecorder = jitterRecorder;
@@ -38,15 +45,23 @@ public class JitterThread extends Thread {
         setName("JitterThread");
         setDaemon(true);
 
-        influxDB = InfluxDBFactory.connect("http://127.0.0.1:8086", "hiccup", "hiccup");
+        try {
+            machine = InetAddress.getLocalHost().getHostName();
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+        influxDB = InfluxDBFactory.connect("http://lab:8086", "hiccup", "hiccup");
         influxDB.setDatabase("hiccup");
         influxDB.setRetentionPolicy("autogen");
 
         influxDB.enableBatch(BatchOptions.DEFAULTS
-                .bufferLimit(100)
-                .actions(100)
+                .bufferLimit(10000)
+                .actions(10000)
+                .flushDuration(1000)
         );
 
+        jitterQueue = new LinkedBlockingQueue<Jitter>(10000);
+        new InfluxReporterThread().start();
     }
 
     public void run() {
@@ -65,10 +80,7 @@ public class JitterThread extends Thread {
             currentHiccup -= shortestHiccup;
 
             jitterRecorder.recordPause(beforeMillis, currentHiccup);
-            influxDB.write(Point.measurement("hiccups")
-                                .time(beforeMillis, TimeUnit.MILLISECONDS)
-                                .addField("value", currentHiccup)
-                                .build());
+            jitterQueue.offer(new Jitter(beforeMillis, currentHiccup));
 
             beforeNanos = after;
         }
@@ -76,5 +88,38 @@ public class JitterThread extends Thread {
 
     private void sleepNanos(long duration) {
         parkNanos(duration);
+    }
+
+    private static class Jitter {
+        private final long timestamp;
+        private final long hiccup;
+
+        private Jitter(long timestamp, long hiccup) {
+            this.timestamp = timestamp;
+            this.hiccup = hiccup;
+        }
+    }
+
+    private class InfluxReporterThread extends Thread {
+
+        private InfluxReporterThread() {
+        }
+
+        public void run() {
+            while (true) {
+                try {
+                    Jitter jitter = jitterQueue.take();
+
+                    influxDB.write(Point.measurement("hiccups")
+                                        .time(jitter.timestamp, MILLISECONDS)
+                                        .addField("value", jitter.hiccup)
+                                        .addField("host", machine)
+                                        .build());
+
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 }

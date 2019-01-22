@@ -96,6 +96,7 @@ public class XMLConfigBuilderTest extends AbstractConfigBuilderTest {
             + "</actions>";
 
     @Override
+
     public void testConfigurationURL() throws Exception {
         URL configURL = getClass().getClassLoader().getResource("hazelcast-default.xml");
         Config config = new XmlConfigBuilder(configURL).build();

@@ -1,0 +1,157 @@
+# Copyright (c) 2008-2019, Hazelcast, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This is a full example hazelcast-client.yaml that includes all the
+# configuration elements of a Hazelcast client.
+#
+# To use this, rename it to hazelcast-client.yaml and place it in
+# the directory where you start your Hazelcast client.
+#
+# To learn how to configure Hazelcast, please see the Reference Manual
+# at https://hazelcast.org/documentation/
+
+hazelcast-client:
+  config-replacers:
+    fail-if-value-missing: false
+    replacers:
+      - class-name: com.hazelcast.config.replacer.EncryptionReplacer
+        properties:
+          passwordFile: password
+          passwordUserProperties: false
+          cipherAlgorithm: DES
+          keyLengthBits: 64
+          secretKeyAlgorithm: DES
+          secretKeyFactoryAlgorithm: PBKDF2WithHmacSHA1
+
+  group:
+    name: dev
+    password: dev-pass
+  instance-name: CLIENT_NAME
+  license-key: HAZELCAST_ENTERPRISE_LICENSE_KEY
+  properties:
+    hazelcast.client.shuffle.member.list: true
+    hazelcast.client.heartbeat.timeout: 60000
+    hazelcast.client.heartbeat.interval: 5000
+    hazelcast.client.event.thread.count: 5
+    hazelcast.client.event.queue.capacity: 1000000
+    hazelcast.client.invocation.timeout.seconds: 120
+  client-attributes:
+    role: admin
+    foo: bar
+
+  network:
+    cluster-members:
+      - 127.0.0.1
+      - 127.0.0.2
+    outbound-ports:
+      - 34600
+      - 34700-34710
+    smart-routing: true
+    redo-operation: true
+    connection-timeout: 60000
+    connection-attempt-period: 3000
+    connection-attempt-limit: 2
+    socket-options:
+      tcp-no-delay: false
+      keep-alive: true
+      reuse-address: true
+      linger-seconds: 3
+      buffer-size: 128
+    socket-interceptor:
+      enabled: true
+      class-name: com.hazelcast.examples.MySocketInterceptor
+      properties:
+        foo: bar
+
+    ssl:
+      enabled: false
+      factory-class-name: com.hazelcast.nio.ssl.BasicSSLContextFactory
+      properties:
+        protocol: TLS
+
+        trustStore: /opt/hazelcast-client.truststore
+        trustStorePassword: secret.123456
+        trustStoreType: JKS
+
+        # Following properties are only needed when the mutual authentication is used.
+        keyStore: /opt/hazelcast-client.keystore
+        keyStorePassword: keystorePassword123
+        keyStoreType: JKS
+           
+    aws:
+      enabled: true
+      connection-timeout-seconds: 11
+      inside-aws: true
+      access-key: TEST_ACCESS_KEY
+      secret-key: TEST_SECRET_KEY
+      region: us-east-1
+      host-header: ec2.amazonaws.com
+      security-group-name: hazelcast-sg
+      tag-key: type
+      tag-value: hz-nodes
+    gcp:
+      enabled: false
+      zones: us-east1-b,us-east1-c
+    azure:
+      enabled: false
+      client-id: CLIENT_ID
+      client-secret: CLIENT_SECRET
+      tenant-id: TENANT_ID
+      subscription-id: SUB_ID
+      cluster-id: HZLCAST001
+      group-name: GROUP-NAME
+    kubernetes:
+      enabled: false
+      namespace: MY-KUBERNETES-NAMESPACE
+      service-name: MY-SERVICE-NAME
+      service-label-name: MY-SERVICE-LABEL-NAME
+      service-label-value: MY-SERVICE-LABEL-VALUE
+    eureka:
+      enabled: false
+      self-registration: true
+      namespace: hazelcast
+    icmp-ping:
+      enabled: false
+      timeout-milliseconds: 2000
+      interval-milliseconds: 3000
+      ttl: 100
+      max-attempts: 5
+      echo-fail-fast-on-startup: false
+    hazelcast-cloud:
+      enabled: false
+      discovery-token: EXAMPLE_TOKEN
+    discovery-strategies:
+      node-filter:
+        class: DummyFilterClass
+      discovery-strategies:
+        - class: DummyDiscoveryStrategy1
+          enabled: true
+          properties:
+            key-string: foo
+            key-int: 123
+            key-boolean: true
+
+  executor-pool-size: 40
+
+  security:
+    credentials: com.hazelcast.security.UsernamePasswordCredentials
+    credentials-factory:
+      class-name: com.hazelcast.examples.MyCredentialsFactory
+      properties:
+        property: value
+
+  listeners:
+    - com.hazelcast.examples.MembershipListener
+    - com.hazelcast.examples.InstanceListener
+    - com.hazelcast.examples.MigrationListener

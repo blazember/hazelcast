@@ -74,7 +74,7 @@ class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
 
     private static final ILogger LOGGER = Logger.getLogger(ClientDomConfigProcessor.class);
 
-    private final ClientConfig clientConfig;
+    protected final ClientConfig clientConfig;
 
     private final QueryCacheConfigBuilderHelper queryCacheConfigBuilderHelper;
 
@@ -91,14 +91,14 @@ class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
             if (occurrenceSet.contains(nodeName)) {
                 throw new InvalidConfigurationException("Duplicate '" + nodeName + "' definition found in XML configuration");
             }
-            handleXmlNode(node, nodeName);
+            handleNode(node, nodeName);
             if (!canOccurMultipleTimes(nodeName)) {
                 occurrenceSet.add(nodeName);
             }
         }
     }
 
-    private void handleXmlNode(Node node, String nodeName) {
+    private void handleNode(Node node, String nodeName) {
         if (SECURITY.isEqual(nodeName)) {
             handleSecurity(node);
         } else if (PROXY_FACTORIES.isEqual(nodeName)) {
@@ -142,14 +142,18 @@ class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
 
     private void handleAttributes(Node node) {
         for (Node n : childElements(node)) {
-            String name = cleanNodeName(n);
-            if (!"attribute".equals(name)) {
-                continue;
-            }
-            String attributeName = getTextContent(n.getAttributes().getNamedItem("name"));
-            String value = getTextContent(n);
-            clientConfig.setAttribute(attributeName, value);
+            handleAttributeNode(n);
         }
+    }
+
+    protected void handleAttributeNode(Node n) {
+        String name = cleanNodeName(n);
+        if (!"attribute".equals(name)) {
+            return;
+        }
+        String attributeName = getTextContent(n.getAttributes().getNamedItem("name"));
+        String value = getTextContent(n);
+        clientConfig.setAttribute(attributeName, value);
     }
 
     private void handleConnectionStrategy(Node node) {
@@ -538,7 +542,7 @@ class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
         clientNetworkConfig.setSocketOptions(socketOptions);
     }
 
-    private void handleClusterMembers(Node node, ClientNetworkConfig clientNetworkConfig) {
+    protected void handleClusterMembers(Node node, ClientNetworkConfig clientNetworkConfig) {
         for (Node child : childElements(node)) {
             if ("address".equals(cleanNodeName(child))) {
                 clientNetworkConfig.addAddress(getTextContent(child));
@@ -623,7 +627,7 @@ class ClientDomConfigProcessor extends AbstractDomConfigProcessor {
         }
     }
 
-    private void handleOutboundPorts(Node child, ClientNetworkConfig clientNetworkConfig) {
+    protected void handleOutboundPorts(Node child, ClientNetworkConfig clientNetworkConfig) {
         for (Node n : childElements(child)) {
             String nodeName = cleanNodeName(n);
             if ("ports".equals(nodeName)) {

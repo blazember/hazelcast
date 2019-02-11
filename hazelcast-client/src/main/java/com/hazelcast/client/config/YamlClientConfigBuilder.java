@@ -16,6 +16,7 @@
 
 package com.hazelcast.client.config;
 
+import com.hazelcast.config.AbstractYamlConfigBuilder;
 import com.hazelcast.config.ConfigLoader;
 import com.hazelcast.config.InvalidConfigurationException;
 import com.hazelcast.internal.yaml.YamlLoader;
@@ -35,7 +36,7 @@ import java.net.URL;
 
 import static com.hazelcast.config.yaml.W3cDomUtil.asW3cNode;
 
-public class YamlClientConfigBuilder {
+public class YamlClientConfigBuilder extends AbstractYamlConfigBuilder {
 
     private static final ILogger LOGGER = Logger.getLogger(YamlClientConfigBuilder.class);
 
@@ -111,17 +112,17 @@ public class YamlClientConfigBuilder {
             throw new InvalidConfigurationException("Invalid YAML configuration", ex);
         }
 
-        YamlNode imdgRoot = yamlRootNode.childAsMapping(ClientConfigSections.HAZELCAST_CLIENT.name.toLowerCase());
-        if (imdgRoot == null) {
+        YamlNode clientRoot = yamlRootNode.childAsMapping(ClientConfigSections.HAZELCAST_CLIENT.name.toLowerCase());
+        if (clientRoot == null) {
             throw new InvalidConfigurationException("No mapping with hazelcast-client key is found in the provided "
                     + "configuration");
         }
 
-        Node w3cRootNode = asW3cNode(imdgRoot);
-        //        replaceVariables(w3cRootNode);
-        //        importDocuments(imdgRoot);
-        //
-        //        new YamlMemberDomConfigProcessor(true, config).buildConfig(w3cRootNode);
+        Node w3cRootNode = asW3cNode(clientRoot);
+        replaceVariables(w3cRootNode);
+        importDocuments(clientRoot);
+
+        new YamlClientDomConfigProcessor(true, config).buildConfig(w3cRootNode);
     }
 
 }

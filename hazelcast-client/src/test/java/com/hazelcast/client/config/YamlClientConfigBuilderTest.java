@@ -16,15 +16,16 @@
 
 package com.hazelcast.client.config;
 
-import com.hazelcast.config.AwsConfig;
-import com.hazelcast.config.GroupConfig;
+import com.hazelcast.config.CredentialsFactoryConfig;
+import com.hazelcast.config.EvictionPolicy;
+import com.hazelcast.config.InMemoryFormat;
 import com.hazelcast.config.InvalidConfigurationException;
-import com.hazelcast.config.SocketInterceptorConfig;
+import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.config.YamlConfigBuilderTest;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.test.HazelcastSerialClassRunner;
-import com.hazelcast.test.HazelcastTestSupport;
 import com.hazelcast.test.annotation.QuickTest;
+import com.hazelcast.topic.TopicOverloadPolicy;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,8 +37,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URL;
-import java.util.Collection;
-import java.util.Map;
+import java.util.List;
 import java.util.Properties;
 
 import static com.hazelcast.nio.IOUtil.delete;
@@ -51,18 +51,15 @@ import static org.junit.Assert.assertTrue;
 // tests need to be executed sequentially because of system properties being set/unset
 @RunWith(HazelcastSerialClassRunner.class)
 @Category(QuickTest.class)
-public class YamlClientConfigBuilderTest extends HazelcastTestSupport {
-
-    private ClientConfig fullClientConfig;
-    private ClientConfig defaultClientConfig;
+public class YamlClientConfigBuilderTest extends AbstractClientConfigBuilderTest {
 
     @Before
     public void init() throws Exception {
         URL schemaResource = YamlConfigBuilderTest.class.getClassLoader().getResource("hazelcast-client-full.yaml");
         fullClientConfig = new YamlClientConfigBuilder(schemaResource).build();
 
-        //        URL schemaResourceDefault = YamlConfigBuilderTest.class.getClassLoader().getResource("hazelcast-client-default.yaml");
-        //        defaultClientConfig = new YamlClientConfigBuilder(schemaResourceDefault).build();
+        URL schemaResourceDefault = YamlConfigBuilderTest.class.getClassLoader().getResource("hazelcast-client-default.yaml");
+        defaultClientConfig = new YamlClientConfigBuilder(schemaResourceDefault).build();
     }
 
     @After
@@ -133,83 +130,129 @@ public class YamlClientConfigBuilderTest extends HazelcastTestSupport {
     }
 
     @Test
-    public void testGroupConfig() {
-        final GroupConfig groupConfig = fullClientConfig.getGroupConfig();
-        assertEquals("dev", groupConfig.getName());
-        assertEquals("dev-pass", groupConfig.getPassword());
+    public void testFlakeIdGeneratorConfig() {
+        String yaml = ""
+                + "hazelcast-client:\n"
+                + "  flake-id-generator:\n"
+                + "    gen:\n"
+                + "      prefetch-count: 3\n"
+                + "      prefetch-validity-millis: 10";
+        ClientConfig config = buildConfig(yaml);
+        ClientFlakeIdGeneratorConfig fConfig = config.findFlakeIdGeneratorConfig("gen");
+        assertEquals("gen", fConfig.getName());
+        assertEquals(3, fConfig.getPrefetchCount());
+        assertEquals(10L, fConfig.getPrefetchValidityMillis());
     }
 
     @Test
-    public void testProperties() {
-        assertEquals(6, fullClientConfig.getProperties().size());
-        assertEquals("60000", fullClientConfig.getProperty("hazelcast.client.heartbeat.timeout"));
+    public void testSecurityConfig_onlyFactory() {
+        String yaml = ""
+                + "hazelcast-client:\n"
+                + "  security:\n"
+                + "    credentials-factory:\n"
+                + "      class-name: com.hazelcast.examples.MyCredentialsFactory\n"
+                + "      properties:\n"
+                + "        property: value";
+        ClientConfig config = buildConfig(yaml);
+        ClientSecurityConfig securityConfig = config.getSecurityConfig();
+        CredentialsFactoryConfig credentialsFactoryConfig = securityConfig.getCredentialsFactoryConfig();
+        assertEquals("com.hazelcast.examples.MyCredentialsFactory", credentialsFactoryConfig.getClassName());
+        Properties properties = credentialsFactoryConfig.getProperties();
+        assertEquals("value", properties.getProperty("property"));
+    }
+
+    @Test(expected = InvalidConfigurationException.class)
+    public void testHazelcastClientTagAppearsTwice() {
+        String yaml = ""
+                + "hazelcast-client: {}\n"
+                + "hazelcast-client: {}";
+        buildConfig(yaml);
     }
 
     @Test
-    public void testAttributes() {
-        Map<String, String> attributes = fullClientConfig.getAttributes();
-        assertEquals(2, attributes.size());
-        assertEquals("bar", attributes.get("foo"));
-        assertEquals("admin", attributes.get("role"));
+    public void testNearCacheInMemoryFormatNative_withKeysByReference() {
+        String mapName = "testMapNearCacheInMemoryFormatNative";
+        String yaml = ""
+                + "hazelcast-client:\n"
+                + "  near-cache:\n"
+                + "    " + mapName + ":\n"
+                + "      in-memory-format: NATIVE\n"
+                + "      serialize-keys: false";
+
+        ClientConfig clientConfig = buildConfig(yaml);
+        NearCacheConfig ncConfig = clientConfig.getNearCacheConfig(mapName);
+
+        assertEquals(InMemoryFormat.NATIVE, ncConfig.getInMemoryFormat());
+        assertTrue(ncConfig.isSerializeKeys());
     }
 
     @Test
-    public void testInstanceName() {
-        assertEquals("CLIENT_NAME", fullClientConfig.getInstanceName());
+    public void testNearCacheEvictionPolicy() {
+        String yaml = ""
+                + "hazelcast-client:\n"
+                + "  near-cache:\n"
+                + "    lfu:\n"
+                + "      eviction:\n"
+                + "        eviction-policy: LFU\n"
+                + "    lru:\n"
+                + "      eviction:\n"
+                + "        eviction-policy: LRU\n"
+                + "    none:\n"
+                + "      eviction:\n"
+                + "        eviction-policy: NONE\n"
+                + "    random:\n"
+                + "      eviction:\n"
+                + "        eviction-policy: RANDOM";
+
+        ClientConfig clientConfig = buildConfig(yaml);
+        assertEquals(EvictionPolicy.LFU, getNearCacheEvictionPolicy("lfu", clientConfig));
+        assertEquals(EvictionPolicy.LRU, getNearCacheEvictionPolicy("lru", clientConfig));
+        assertEquals(EvictionPolicy.NONE, getNearCacheEvictionPolicy("none", clientConfig));
+        assertEquals(EvictionPolicy.RANDOM, getNearCacheEvictionPolicy("random", clientConfig));
     }
 
     @Test
-    public void testNetworkConfig() {
-        final ClientNetworkConfig networkConfig = fullClientConfig.getNetworkConfig();
-        assertEquals(2, networkConfig.getConnectionAttemptLimit());
-        assertEquals(2, networkConfig.getAddresses().size());
-        assertContains(networkConfig.getAddresses(), "127.0.0.1");
-        assertContains(networkConfig.getAddresses(), "127.0.0.2");
+    public void testClientUserCodeDeploymentConfig() {
+        String yaml = ""
+                + "hazelcast-client:\n"
+                + "  user-code-deployment:\n"
+                + "    enabled: true\n"
+                + "    jarPaths:\n"
+                + "      - /User/test/test.jar\n"
+                + "    classNames:\n"
+                + "      - test.testClassName\n"
+                + "      - test.testClassName2";
 
-        Collection<String> allowedPorts = networkConfig.getOutboundPortDefinitions();
-        assertEquals(2, allowedPorts.size());
-        assertTrue(allowedPorts.contains("34600"));
-        assertTrue(allowedPorts.contains("34700-34710"));
-
-        assertTrue(networkConfig.isSmartRouting());
-        assertTrue(networkConfig.isRedoOperation());
-
-        final SocketInterceptorConfig socketInterceptorConfig = networkConfig.getSocketInterceptorConfig();
-        assertTrue(socketInterceptorConfig.isEnabled());
-        assertEquals("com.hazelcast.examples.MySocketInterceptor", socketInterceptorConfig.getClassName());
-        assertEquals("bar", socketInterceptorConfig.getProperty("foo"));
-
-        AwsConfig awsConfig = networkConfig.getAwsConfig();
-        assertTrue(awsConfig.isEnabled());
-        assertEquals("TEST_ACCESS_KEY", awsConfig.getProperty("access-key"));
-        assertEquals("TEST_SECRET_KEY", awsConfig.getProperty("secret-key"));
-        assertEquals("us-east-1", awsConfig.getProperty("region"));
-        assertEquals("ec2.amazonaws.com", awsConfig.getProperty("host-header"));
-        assertEquals("type", awsConfig.getProperty("tag-key"));
-        assertEquals("hz-nodes", awsConfig.getProperty("tag-value"));
-        assertEquals("11", awsConfig.getProperty("connection-timeout-seconds"));
-        assertFalse(networkConfig.getGcpConfig().isEnabled());
-        assertFalse(networkConfig.getAzureConfig().isEnabled());
-        assertFalse(networkConfig.getKubernetesConfig().isEnabled());
-        assertFalse(networkConfig.getEurekaConfig().isEnabled());
+        ClientConfig clientConfig = buildConfig(yaml);
+        ClientUserCodeDeploymentConfig userCodeDeploymentConfig = clientConfig.getUserCodeDeploymentConfig();
+        assertTrue(userCodeDeploymentConfig.isEnabled());
+        List<String> classNames = userCodeDeploymentConfig.getClassNames();
+        assertEquals(2, classNames.size());
+        assertTrue(classNames.contains("test.testClassName"));
+        assertTrue(classNames.contains("test.testClassName2"));
+        List<String> jarPaths = userCodeDeploymentConfig.getJarPaths();
+        assertEquals(1, jarPaths.size());
+        assertTrue(jarPaths.contains("/User/test/test.jar"));
     }
 
+    @Test
+    public void testReliableTopic_defaults() {
+        String yaml = ""
+                + "hazelcast-client:\n"
+                + "  reliable-topic:\n"
+                + "    rel-topic: {}";
 
-    static ClientConfig buildConfig(String yaml, Properties properties) {
+        ClientConfig config = buildConfig(yaml);
+        ClientReliableTopicConfig reliableTopicConfig = config.getReliableTopicConfig("rel-topic");
+        assertEquals("rel-topic", reliableTopicConfig.getName());
+        assertEquals(10, reliableTopicConfig.getReadBatchSize());
+        assertEquals(TopicOverloadPolicy.BLOCK, reliableTopicConfig.getTopicOverloadPolicy());
+    }
+    
+    public static ClientConfig buildConfig(String yaml) {
         ByteArrayInputStream bis = new ByteArrayInputStream(yaml.getBytes());
         YamlClientConfigBuilder configBuilder = new YamlClientConfigBuilder(bis);
-        //        configBuilder.setProperties(properties);
         return configBuilder.build();
-    }
-
-    static ClientConfig buildConfig(String yaml, String key, String value) {
-        Properties properties = new Properties();
-        properties.setProperty(key, value);
-        return buildConfig(yaml, properties);
-    }
-
-    public static ClientConfig buildConfig(String yaml) {
-        return buildConfig(yaml, null);
     }
 
 }

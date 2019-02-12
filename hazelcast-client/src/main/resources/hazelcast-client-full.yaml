@@ -155,3 +155,129 @@ hazelcast-client:
     - com.hazelcast.examples.MembershipListener
     - com.hazelcast.examples.InstanceListener
     - com.hazelcast.examples.MigrationListener
+
+  serialization:
+    portable-version: 3
+    use-native-byte-order: true
+    byte-order: BIG_ENDIAN
+    enable-compression: false
+    enable-shared-object: true
+    allow-unsafe: false
+    data-serializable-factories:
+      - factory-id: 1
+        class-name: com.hazelcast.examples.DataSerializableFactory
+    portable-factories:
+      - factory-id: 2
+        class-name: com.hazelcast.examples.PortableFactory
+    global-serializer:
+      override-java-serialization: true
+      class-name: com.hazelcast.examples.GlobalSerializerFactory
+    serializers:
+      - type-class: com.hazelcast.examples.DummyType
+        class-name: com.hazelcast.examples.SerializerFactory
+    check-class-def-errors: true
+    java-serialization-filter:
+      blacklist:
+        class:
+          - com.acme.app.BeanComparator
+      whitelist:
+        class:
+          - java.lang.String
+          - example.Foo
+        package:
+          - com.acme.app
+          - com.acme.app.subpkg
+        prefix:
+          - java
+          - "["
+          - com.
+
+  native-memory:
+    enabled: false
+    allocator-type: POOLED
+    size:
+      unit: MEGABYTES
+      value: 128
+    min-block-size: 1
+    page-size: 1
+    metadata-space-percentage: 40.5
+
+  proxy-factories:
+    - class-name: com.hazelcast.examples.ProxyXYZ1
+      service: sampleService1
+    - class-name: com.hazelcast.examples.ProxyXYZ2
+      service: sampleService1
+    - class-name: com.hazelcast.examples.ProxyXYZ3
+      service: sampleService3
+
+  load-balancer:
+    type: random
+
+  # Note that the Near Cache eviction configuration is different for NATIVE in-memory format.
+  # Proper eviction configuration example for NATIVE in-memory format :
+  #  TODO: `<eviction max-size-policy="USED_NATIVE_MEMORY_SIZE" eviction-policy="LFU" size="60"/>`
+  near-cache:
+    default:
+      max-size: 2000
+      time-to-live-seconds: 90
+      max-idle-seconds: 100
+      eviction-policy: LFU
+      invalidate-on-change: true
+      in-memory-format: OBJECT
+      serialize-keys: true
+      local-update-policy: INVALIDATE
+
+  flake-id-generator:
+    default:
+      prefetch-count: 100
+      prefetch-validity-millis: 600000
+
+  query-caches:
+    query-cache-name:
+      mapName: map-name
+      predicate:
+        class-name: com.hazelcast.examples.ExamplePredicate
+      entry-listeners:
+        - include-value: true
+          local: false
+          class-name: com.hazelcast.examples.EntryListener
+      include-value: true
+      batch-size: 1
+      buffer-size: 16
+      delay-seconds: 0
+      in-memory-format: BINARY
+      coalesce: false
+      populate: true
+      eviction:
+        eviction-policy: LRU
+        max-size-policy: ENTRY_COUNT
+        size: 10000
+      indexes:
+        name:
+          ordered: false
+
+  connection-strategy:
+    async-start: true
+    reconnect-mode: ASYNC
+    connection-retry:
+      enabled: true
+      initial-backoff-millis: 2000
+      max-backoff-millis: 60000
+      multiplier: 3
+      fail-on-max-backoff: true
+      jitter: 0.5
+
+  reliable-topic:
+    rel-topic:
+      read-batch-size: 100
+      topic-overload-policy: DISCARD_NEWEST
+
+  user-code-deployment:
+    enabled: true
+    jarPaths:
+      - /User/test/sample.jar
+      - https://hazelcast.com
+      - file://User/test/sample.jar
+    classNames:
+      - test.sampleClassName
+

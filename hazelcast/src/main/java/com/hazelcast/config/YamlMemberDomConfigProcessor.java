@@ -679,6 +679,7 @@ class YamlMemberDomConfigProcessor extends MemberDomConfigProcessor {
         }
     }
 
+    @Override
     protected SerializationConfig parseSerialization(final Node node) {
         SerializationConfig serializationConfig = new SerializationConfig();
         for (Node child : childElements(node)) {
@@ -782,6 +783,7 @@ class YamlMemberDomConfigProcessor extends MemberDomConfigProcessor {
         }
     }
 
+    @Override
     protected ClassFilter parseClassFilterList(Node node) {
         ClassFilter list = new ClassFilter();
         for (Node typeNode : childElements(node)) {

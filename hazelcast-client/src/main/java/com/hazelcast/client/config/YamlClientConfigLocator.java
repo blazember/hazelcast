@@ -24,12 +24,17 @@ import com.hazelcast.core.HazelcastException;
  * YAML configuration.
  */
 public class YamlClientConfigLocator extends AbstractConfigLocator {
+    public YamlClientConfigLocator() {
+        this(true);
+    }
+    
     /**
      * Constructs a XmlClientConfigBuilder.
      *
+     * @param fallbackToDefault
      * @throws com.hazelcast.core.HazelcastException if the client YAML config is not located.
      */
-    public YamlClientConfigLocator() {
+    public YamlClientConfigLocator(boolean fallbackToDefault) {
         try {
             if (loadFromSystemProperty("hazelcast.client.config")) {
                 return;
@@ -43,7 +48,9 @@ public class YamlClientConfigLocator extends AbstractConfigLocator {
                 return;
             }
 
-            loadDefaultConfigurationFromClasspath("hazelcast-client.yaml");
+            if (fallbackToDefault) {
+                loadDefaultConfigurationFromClasspath("hazelcast-client.yaml");
+            }
         } catch (final RuntimeException e) {
             throw new HazelcastException("Failed to load ClientConfig", e);
         }

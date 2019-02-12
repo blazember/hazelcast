@@ -18,6 +18,8 @@ package com.hazelcast.client;
 
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.config.XmlClientConfigBuilder;
+import com.hazelcast.client.config.YamlClientConfigBuilder;
+import com.hazelcast.client.config.YamlClientConfigLocator;
 import com.hazelcast.client.impl.clientside.ClientConnectionManagerFactory;
 import com.hazelcast.client.impl.clientside.DefaultClientConnectionManagerFactory;
 import com.hazelcast.client.impl.clientside.HazelcastClientInstanceImpl;
@@ -57,6 +59,8 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class HazelcastClient {
 
+    private static final boolean DONT_USE_DEFAULT = false;
+
     static {
         OutOfMemoryErrorDispatcher.setClientHandler(new ClientOutOfMemoryHandler());
     }
@@ -68,7 +72,16 @@ public final class HazelcastClient {
     }
 
     public static HazelcastInstance newHazelcastClient() {
-        return newHazelcastClient(new XmlClientConfigBuilder().build());
+        ClientConfig config;
+        // try load config from any provided YAML config except for the default config
+        YamlClientConfigLocator yamlClientConfigLocator = new YamlClientConfigLocator(DONT_USE_DEFAULT);
+        if (yamlClientConfigLocator.isConfigPresent()) {
+            config = new YamlClientConfigBuilder().build();
+        } else {
+            config = new XmlClientConfigBuilder().build();
+        }
+
+        return newHazelcastClient(config);
     }
 
     public static HazelcastInstance newHazelcastClient(ClientConfig config) {

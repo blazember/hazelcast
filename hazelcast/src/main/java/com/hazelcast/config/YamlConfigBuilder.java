@@ -280,8 +280,9 @@ public class YamlConfigBuilder implements ConfigBuilder {
         return replacer;
     }
 
-    public void setProperties(Properties properties) {
+    public YamlConfigBuilder setProperties(Properties properties) {
         this.properties = properties;
+        return this;
     }
 
     private void fillReplacerProperties(Node node, Properties properties) {

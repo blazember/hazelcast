@@ -93,7 +93,6 @@ public class XmlConfigBuilder extends AbstractXmlConfigBuilder implements Config
     }
 
     /**
-<<<<<<< HEAD
      * Constructs a {@link XmlConfigBuilder} that loads the configuration
      * with the provided {@link XmlConfigLocator}.
      * <p/>
@@ -119,8 +118,6 @@ public class XmlConfigBuilder extends AbstractXmlConfigBuilder implements Config
     }
 
     /**
-=======
->>>>>>> Load member config from YAML
      * Sets the used properties. Can be null if no properties should be used.
      * <p>
      * Properties are used to resolve ${variable} occurrences in the XML file.

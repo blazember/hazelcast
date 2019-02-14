@@ -79,9 +79,33 @@ public class YamlClientConfigBuilder extends AbstractYamlConfigBuilder {
      * </ol>
      */
     public YamlClientConfigBuilder() {
-        YamlClientConfigLocator locator = new YamlClientConfigLocator();
+        this((YamlClientConfigLocator) null);
+    }
+
+    /**
+     * Constructs a {@link YamlClientConfigBuilder} that loads the configuration
+     * with the provided {@link YamlClientConfigLocator}.
+     * <p/>
+     * If the provided {@link YamlClientConfigLocator} is {@code null}, a new
+     * instance is created and the config is located in every possible
+     * places. For these places, please see {@link YamlClientConfigLocator}.
+     * <p/>
+     * If the provided {@link YamlClientConfigLocator} is not {@code null}, it
+     * is expected that it already located the configuration YAML to load
+     * from. No further attempt to locate the configuration YAML is made
+     * if the configuration YAML is not located already.
+     *
+     * @param locator the configured locator to use
+     */
+    public YamlClientConfigBuilder(YamlClientConfigLocator locator) {
+        if (locator == null) {
+            locator = new YamlClientConfigLocator();
+            locator.locateEveryWhere();
+        }
+
         this.in = locator.getIn();
     }
+
 
     public ClientConfig build() {
         return build(Thread.currentThread().getContextClassLoader());

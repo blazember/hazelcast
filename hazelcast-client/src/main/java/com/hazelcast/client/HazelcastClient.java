@@ -18,6 +18,7 @@ package com.hazelcast.client;
 
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.config.XmlClientConfigBuilder;
+import com.hazelcast.client.config.XmlClientConfigLocator;
 import com.hazelcast.client.config.YamlClientConfigBuilder;
 import com.hazelcast.client.config.YamlClientConfigLocator;
 import com.hazelcast.client.impl.clientside.ClientConnectionManagerFactory;
@@ -59,8 +60,6 @@ import java.util.concurrent.ConcurrentMap;
  */
 public final class HazelcastClient {
 
-    private static final boolean DONT_USE_DEFAULT = false;
-
     static {
         OutOfMemoryErrorDispatcher.setClientHandler(new ClientOutOfMemoryHandler());
     }
@@ -73,12 +72,29 @@ public final class HazelcastClient {
 
     public static HazelcastInstance newHazelcastClient() {
         ClientConfig config;
-        // try load config from any provided YAML config except for the default config
-        YamlClientConfigLocator yamlClientConfigLocator = new YamlClientConfigLocator();
-        if (yamlClientConfigLocator.isConfigPresent()) {
-            config = new YamlClientConfigBuilder().build();
+        XmlClientConfigLocator xmlConfigLocator = new XmlClientConfigLocator();
+        YamlClientConfigLocator yamlConfigLocator = new YamlClientConfigLocator();
+
+        if (xmlConfigLocator.locateFromSystemProperty()) {
+            // 1. Try loading XML config if provided in system property
+            config = new XmlClientConfigBuilder(xmlConfigLocator).build();
+
+        } else if (yamlConfigLocator.locateFromSystemProperty()) {
+            // 2. Try loading YAML config if provided in system property
+            config = new YamlClientConfigBuilder(yamlConfigLocator).build();
+
+        } else if (xmlConfigLocator.locateInWorkDirOrOnClasspath()) {
+            // 3. Try loading XML config from the working directory or from the classpath
+            config = new XmlClientConfigBuilder(xmlConfigLocator).build();
+
+        } else if (yamlConfigLocator.locateInWorkDirOrOnClasspath()) {
+            // 4. Try loading YAML config from the working directory or from the classpath
+            config = new YamlClientConfigBuilder(yamlConfigLocator).build();
+
         } else {
-            config = new XmlClientConfigBuilder().build();
+            // 5. Loading the default XML configuration file
+            xmlConfigLocator.locateDefault();
+            config = new XmlClientConfigBuilder(xmlConfigLocator).build();
         }
 
         return newHazelcastClient(config);

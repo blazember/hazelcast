@@ -228,18 +228,24 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
                 break;
             case DONE_VOID_ORDINAL:
                 op.afterRun();
-                logger.info("***** Processed VOID response of OP: " + op.getClass().getSimpleName());
+                if (shouldLog) {
+                    logger.info("***** Processed VOID response of OP: " + op.getClass().getSimpleName());
+                }
                 break;
             case OFFLOAD_ORDINAL:
                 op.afterRun();
                 Offload offload = (Offload) callStatus;
                 offload.init(nodeEngine, operationService.asyncOperations);
                 offload.start();
-                logger.info("***** Processed OFFLOAD response of OP: " + op.getClass().getSimpleName());
+                if (shouldLog) {
+                    logger.info("***** Processed OFFLOAD response of OP: " + op.getClass().getSimpleName());
+                }
                 break;
             case WAIT_ORDINAL:
                 nodeEngine.getOperationParker().park((BlockingOperation) op);
-                logger.info("***** Processed PARK response of OP: " + op.getClass().getSimpleName());
+                if (shouldLog) {
+                    logger.info("***** Processed PARK response of OP: " + op.getClass().getSimpleName());
+                }
                 break;
             default:
                 throw new IllegalStateException();

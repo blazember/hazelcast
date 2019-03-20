@@ -226,6 +226,11 @@ public abstract class AbstractCompletableFuture<V> implements ICompletableFuture
 
             synchronized (this) {
                 if (!isDoneState(this.state)) {
+                    String threadName = Thread.currentThread().getName().toLowerCase();
+                    boolean shouldLog = threadName.contains("clusterb");
+                    if (shouldLog) {
+                        //                        logger.info("***** Waiting on " + System.identityHashCode(this));
+                    }
                     wait(millisToWait);
                 }
             }
@@ -297,6 +302,11 @@ public abstract class AbstractCompletableFuture<V> implements ICompletableFuture
 
     private void notifyThreadsWaitingOnGet() {
         synchronized (this) {
+            String threadName = Thread.currentThread().getName().toLowerCase();
+            boolean shouldLog = threadName.contains("clusterb");
+            if (shouldLog) {
+                logger.info("***** Notifying all waiting for " + System.identityHashCode(this));
+            }
             notifyAll();
         }
     }

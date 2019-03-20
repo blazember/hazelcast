@@ -211,11 +211,11 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
         boolean shouldLog = threadName.contains("clusterb") && threadName.contains("partition-operation");
 
         if (shouldLog) {
-            logger.info("***** Executing OP: " + op.getClass().getSimpleName());
+            //            logger.info("***** Executing OP: " + op.getClass().getSimpleName());
         }
         CallStatus callStatus = op.call();
         if (shouldLog) {
-            logger.info("***** Executed OP: " + op.getClass().getSimpleName());
+            //            logger.info("***** Executed OP: " + op.getClass().getSimpleName());
         }
 
         switch (callStatus.ordinal()) {
@@ -223,13 +223,13 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
                 handleResponse(op);
                 afterRun(op);
                 if (shouldLog) {
-                    logger.info("***** Processed ORDINAL response of OP: " + op.getClass().getSimpleName());
+                    //                    logger.info("***** Processed ORDINAL response of OP: " + op.getClass().getSimpleName());
                 }
                 break;
             case DONE_VOID_ORDINAL:
                 op.afterRun();
                 if (shouldLog) {
-                    logger.info("***** Processed VOID response of OP: " + op.getClass().getSimpleName());
+                    //                    logger.info("***** Processed VOID response of OP: " + op.getClass().getSimpleName());
                 }
                 break;
             case OFFLOAD_ORDINAL:
@@ -238,13 +238,13 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
                 offload.init(nodeEngine, operationService.asyncOperations);
                 offload.start();
                 if (shouldLog) {
-                    logger.info("***** Processed OFFLOAD response of OP: " + op.getClass().getSimpleName());
+                    //                    logger.info("***** Processed OFFLOAD response of OP: " + op.getClass().getSimpleName());
                 }
                 break;
             case WAIT_ORDINAL:
                 nodeEngine.getOperationParker().park((BlockingOperation) op);
                 if (shouldLog) {
-                    logger.info("***** Processed PARK response of OP: " + op.getClass().getSimpleName());
+                    //                    logger.info("***** Processed PARK response of OP: " + op.getClass().getSimpleName());
                 }
                 break;
             default:

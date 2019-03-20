@@ -85,7 +85,16 @@ final class InvokeOnPartitions {
      * Executes all the operations on the partitions.
      */
     <T> Map<Integer, T> invoke() throws Exception {
-        return this.<T>invokeAsync().get();
+        ICompletableFuture<Map<Integer, T>> future = this.<T>invokeAsync();
+        String threadName = Thread.currentThread().getName().toLowerCase();
+        String opFactoryName = this.operationFactory.getClass().getSimpleName();
+        boolean shouldLog = threadName.contains("clusterb")
+                && opFactoryName.contains("Merkle");
+        if (shouldLog) {
+            logger.info("***** Waiting for future " + opFactoryName + ", future hashCode: " + System.identityHashCode(future));
+        }
+
+        return future.get();
     }
 
     /**

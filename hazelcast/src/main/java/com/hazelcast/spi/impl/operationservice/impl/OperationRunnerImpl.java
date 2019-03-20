@@ -207,7 +207,16 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
     }
 
     private void call(Operation op) throws Exception {
+        String threadName = Thread.currentThread().getName().toLowerCase();
+        boolean shouldLog = threadName.contains("clusterb") && threadName.contains("partition-operation");
+
+        if (shouldLog) {
+            logger.info("***** Executing OP: " + op.getClass().getSimpleName());
+        }
         CallStatus callStatus = op.call();
+        if (shouldLog) {
+            logger.info("***** Executed OP: " + op.getClass().getSimpleName());
+        }
 
         switch (callStatus.ordinal()) {
             case DONE_RESPONSE_ORDINAL:
@@ -228,6 +237,10 @@ class OperationRunnerImpl extends OperationRunner implements MetricsProvider {
                 break;
             default:
                 throw new IllegalStateException();
+        }
+
+        if (shouldLog) {
+            logger.info("***** Processed result of OP: " + op.getClass().getSimpleName());
         }
     }
 

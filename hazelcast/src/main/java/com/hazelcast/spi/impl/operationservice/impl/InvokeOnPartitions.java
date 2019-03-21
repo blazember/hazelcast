@@ -91,7 +91,7 @@ final class InvokeOnPartitions {
         boolean shouldLog = threadName.contains("clusterb")
                 && opFactoryName.contains("Merkle");
         if (shouldLog) {
-            logger.info("***** Waiting for future " + opFactoryName + ", future hashCode: " + System.identityHashCode(future));
+            //            logger.info("***** Waiting for future " + opFactoryName + ", future hashCode: " + System.identityHashCode(future));
         }
 
         return future.get();
@@ -186,10 +186,12 @@ final class InvokeOnPartitions {
 
         FirstAttemptExecutionCallback(List<Integer> partitions) {
             this.requestedPartitions = partitions;
+            logger.info("***** Created callback " + System.identityHashCode(this));
         }
 
         @Override
         public void onResponse(Object response) {
+            logger.info("***** Processing response of " + System.identityHashCode(this));
             PartitionResponse result = operationService.nodeEngine.toObject(response);
             Object[] results = result.getResults();
             int[] responsePartitions = result.getPartitions();

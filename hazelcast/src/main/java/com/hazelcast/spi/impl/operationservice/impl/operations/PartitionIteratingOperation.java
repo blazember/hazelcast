@@ -144,6 +144,8 @@ public final class PartitionIteratingOperation extends Operation implements Iden
                 return;
             }
 
+            getLogger().info("***** INVOKE with " + operationFactory.getClass().getSimpleName() + " ON " + partitions.length
+                    + " PARTITIONS ");
             PartitionAwareOperationFactory partitionAwareFactory = extractPartitionAware(operationFactory);
             if (partitionAwareFactory == null) {
                 executeOperations();

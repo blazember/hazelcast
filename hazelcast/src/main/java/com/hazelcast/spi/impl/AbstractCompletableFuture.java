@@ -305,7 +305,7 @@ public abstract class AbstractCompletableFuture<V> implements ICompletableFuture
             String threadName = Thread.currentThread().getName().toLowerCase();
             boolean shouldLog = threadName.contains("clusterb");
             if (shouldLog) {
-                logger.info("***** Notifying all waiting for " + System.identityHashCode(this));
+//                logger.info("***** Notifying all waiting for " + System.identityHashCode(this));
             }
             notifyAll();
         }

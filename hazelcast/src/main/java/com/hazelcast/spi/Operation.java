@@ -254,7 +254,7 @@ public abstract class Operation implements DataSerializable {
      * @return the updated Operation.
      * @see #getPartitionId()
      */
-    public final Operation setPartitionId(int partitionId) {
+    public Operation setPartitionId(int partitionId) {
         this.partitionId = partitionId;
         setFlag(partitionId > Short.MAX_VALUE, BITMASK_PARTITION_ID_32_BIT);
         return this;

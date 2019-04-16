@@ -32,7 +32,7 @@ import com.hazelcast.quorum.QuorumType;
 import com.hazelcast.spi.ServiceConfigurationParser;
 import com.hazelcast.topic.TopicOverloadPolicy;
 import com.hazelcast.util.ExceptionUtil;
-import com.hazelcast.util.function.Function;
+import com.hazelcast.util.function.ThrowingConsumer;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import static com.hazelcast.config.AliasedDiscoveryConfigUtils.getConfigByTag;
 import static com.hazelcast.config.ConfigSections.ADVANCED_NETWORK;
@@ -351,14 +352,16 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.setLiteMember(liteMember);
     }
 
-    protected void handleQuorum(Node node) {
-        QuorumConfig quorumConfig = new QuorumConfig();
-        String name = getAttribute(node, "name");
-        quorumConfig.setName(name);
-        handleQuorumNode(node, quorumConfig, name);
+    private void handleQuorum(Node node) {
+        handleNode(node, quorumNode -> {
+            QuorumConfig quorumConfig = new QuorumConfig();
+            String name = extractName(quorumNode);
+            quorumConfig.setName(name);
+            handleQuorumNode(quorumNode, quorumConfig, name);
+        });
     }
 
-    protected void handleQuorumNode(Node node, QuorumConfig quorumConfig, String name) {
+    private void handleQuorumNode(Node node, QuorumConfig quorumConfig, String name) {
         Node attrEnabled = node.getAttributes().getNamedItem("enabled");
         boolean enabled = attrEnabled != null && getBooleanValue(getTextContent(attrEnabled));
         // probabilistic-quorum and recently-active-quorum quorum configs are constructed via QuorumConfigBuilder
@@ -399,6 +402,7 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
 
     protected void handleQuorumListeners(QuorumConfig quorumConfig, Node n) {
         for (Node listenerNode : childElements(n)) {
+            // TODO only the if is the difference, can we get rid of the overriding in the YAML counterpart?
             if ("quorum-listener".equals(cleanNodeName(listenerNode))) {
                 String listenerClass = getTextContent(listenerNode);
                 quorumConfig.addListenerConfig(new QuorumListenerConfig(listenerClass));
@@ -495,17 +499,15 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         }
     }
 
-    protected void handleWanReplication(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-
-        WanReplicationConfig wanReplicationConfig = new WanReplicationConfig();
-        wanReplicationConfig.setName(name);
-
-        handleWanReplicationNode(node, wanReplicationConfig);
+    private void handleWanReplication(Node node) {
+        handleNode(node, wanReplicationNode -> {
+            WanReplicationConfig wanReplicationConfig = new WanReplicationConfig();
+            wanReplicationConfig.setName(extractName(wanReplicationNode));
+            handleWanReplicationNode(wanReplicationNode, wanReplicationConfig);
+        });
     }
 
-    void handleWanReplicationNode(Node node, WanReplicationConfig wanReplicationConfig) {
+    private void handleWanReplicationNode(Node node, WanReplicationConfig wanReplicationConfig) {
         for (Node nodeTarget : childElements(node)) {
             String nodeName = cleanNodeName(nodeTarget);
             handleWanReplicationChild(wanReplicationConfig, nodeTarget, nodeName);
@@ -686,10 +688,12 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         handleServerSocketEndpointConfig(config, node);
     }
 
-    protected void handleWanServerSocketEndpointConfig(Node node) throws Exception {
-        ServerSocketEndpointConfig config = new ServerSocketEndpointConfig();
-        config.setProtocolType(ProtocolType.WAN);
-        handleServerSocketEndpointConfig(config, node);
+    private void handleWanServerSocketEndpointConfig(Node node) throws Exception {
+        handleNodeMayThrow(node, wanEndpointNode -> {
+            ServerSocketEndpointConfig config = new ServerSocketEndpointConfig();
+            config.setProtocolType(ProtocolType.WAN);
+            handleServerSocketEndpointConfig(config, wanEndpointNode, extractName(wanEndpointNode));
+        });
     }
 
     private void handleRestServerSocketEndpointConfig(Node node) throws Exception {
@@ -711,10 +715,12 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         handleServerSocketEndpointConfig(config, node);
     }
 
-    protected void handleWanEndpointConfig(Node node) throws Exception {
-        EndpointConfig config = new EndpointConfig();
-        config.setProtocolType(ProtocolType.WAN);
-        handleEndpointConfig(config, node);
+    private void handleWanEndpointConfig(Node node) throws Exception {
+        handleNodeMayThrow(node, wanEndpointNode -> {
+            EndpointConfig config = new EndpointConfig();
+            config.setProtocolType(ProtocolType.WAN);
+            handleEndpointConfig(config, wanEndpointNode, extractName(wanEndpointNode));
+        });
     }
 
     private void handleServerSocketEndpointConfig(ServerSocketEndpointConfig endpointConfig, Node node) throws Exception {
@@ -818,24 +824,22 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         }
     }
 
-    protected void handleExecutor(Node node) throws Exception {
-        ExecutorConfig executorConfig = new ExecutorConfig();
-        handleViaReflection(node, config, executorConfig);
+    private void handleExecutor(Node node) throws Exception {
+        handleNodeMayThrow(node,
+                executorNode -> handleViaReflection(executorNode, config, new ExecutorConfig(extractName(executorNode))));
     }
 
-    protected void handleDurableExecutor(Node node) throws Exception {
-        DurableExecutorConfig durableExecutorConfig = new DurableExecutorConfig();
-        handleViaReflection(node, config, durableExecutorConfig);
+    private void handleDurableExecutor(Node node) throws Exception {
+        handleNodeMayThrow(node,
+                executorNode -> handleViaReflection(executorNode, config, new DurableExecutorConfig(extractName(executorNode))));
     }
 
-    protected void handleScheduledExecutor(Node node) {
-        ScheduledExecutorConfig scheduledExecutorConfig = new ScheduledExecutorConfig();
-        scheduledExecutorConfig.setName(getTextContent(node.getAttributes().getNamedItem("name")));
-
-        handleScheduledExecutorNode(node, scheduledExecutorConfig);
+    private void handleScheduledExecutor(Node node) {
+        handleNode(node, executorNode -> handleScheduledExecutorNode(executorNode,
+                new ScheduledExecutorConfig(extractName(executorNode))));
     }
 
-    void handleScheduledExecutorNode(Node node, ScheduledExecutorConfig scheduledExecutorConfig) {
+    private void handleScheduledExecutorNode(Node node, ScheduledExecutorConfig scheduledExecutorConfig) {
         for (Node child : childElements(node)) {
             String nodeName = cleanNodeName(child);
             if ("merge-policy".equals(nodeName)) {
@@ -854,14 +858,14 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addScheduledExecutorConfig(scheduledExecutorConfig);
     }
 
-    protected void handleCardinalityEstimator(Node node) {
-        CardinalityEstimatorConfig cardinalityEstimatorConfig = new CardinalityEstimatorConfig();
-        cardinalityEstimatorConfig.setName(getTextContent(node.getAttributes().getNamedItem("name")));
-
-        handleCardinalityEstimatorNode(node, cardinalityEstimatorConfig);
+    private void handleCardinalityEstimator(Node node) {
+        handleNode(node, estimatorNode -> {
+            String name = extractName(estimatorNode);
+            handleCardinalityEstimatorNode(estimatorNode, new CardinalityEstimatorConfig(name));
+        });
     }
 
-    void handleCardinalityEstimatorNode(Node node, CardinalityEstimatorConfig cardinalityEstimatorConfig) {
+    private void handleCardinalityEstimatorNode(Node node, CardinalityEstimatorConfig cardinalityEstimatorConfig) {
         for (Node child : childElements(node)) {
             String nodeName = cleanNodeName(child);
             if ("merge-policy".equals(nodeName)) {
@@ -879,18 +883,16 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addCardinalityEstimatorConfig(cardinalityEstimatorConfig);
     }
 
-    protected void handlePNCounter(Node node) throws Exception {
-        PNCounterConfig pnCounterConfig = new PNCounterConfig();
-        handleViaReflection(node, config, pnCounterConfig);
+    private void handlePNCounter(Node node) throws Exception {
+        handleNodeMayThrow(node,
+                pnCounterNode -> handleViaReflection(pnCounterNode, config, new PNCounterConfig(extractName(pnCounterNode))));
     }
 
-    protected void handleFlakeIdGenerator(Node node) {
-        String name = getAttribute(node, "name");
-        FlakeIdGeneratorConfig generatorConfig = new FlakeIdGeneratorConfig(name);
-        handleFlakeIdGeneratorNode(node, generatorConfig);
+    private void handleFlakeIdGenerator(Node node) {
+        handleNode(node, genNode -> handleFlakeIdGeneratorNode(genNode, new FlakeIdGeneratorConfig(extractName(genNode))));
     }
 
-    void handleFlakeIdGeneratorNode(Node node, FlakeIdGeneratorConfig generatorConfig) {
+    private void handleFlakeIdGeneratorNode(Node node, FlakeIdGeneratorConfig generatorConfig) {
         for (Node child : childElements(node)) {
             String nodeName = cleanNodeName(child);
             String value = getTextContent(child).trim();
@@ -1310,14 +1312,11 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         }
     }
 
-        protected void handleLock(Node node) {
-        String name = getAttribute(node, "name");
-        LockConfig lockConfig = new LockConfig();
-        lockConfig.setName(name);
-        handleLockNode(node, lockConfig);
+    private void handleLock(Node node) {
+        handleNode(node, lockNode -> handleLockNode(lockNode, new LockConfig(extractName(lockNode))));
     }
 
-    void handleLockNode(Node node, LockConfig lockConfig) {
+    private void handleLockNode(Node node, LockConfig lockConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -1328,15 +1327,11 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addLockConfig(lockConfig);
     }
 
-    protected void handleQueue(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        QueueConfig qConfig = new QueueConfig();
-        qConfig.setName(name);
-        handleQueueNode(node, qConfig);
+    private void handleQueue(Node node) {
+        handleNode(node, queueNode -> handleQueueNode(queueNode, new QueueConfig(extractName(queueNode))));
     }
 
-    void handleQueueNode(Node node, final QueueConfig qConfig) {
+    private void handleQueueNode(Node node, final QueueConfig qConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -1347,13 +1342,7 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             } else if ("async-backup-count".equals(nodeName)) {
                 qConfig.setAsyncBackupCount(getIntegerValue("async-backup-count", value));
             } else if ("item-listeners".equals(nodeName)) {
-                handleItemListeners(n, new Function<ItemListenerConfig, Void>() {
-                    @Override
-                    public Void apply(ItemListenerConfig itemListenerConfig) {
-                        qConfig.addItemListenerConfig(itemListenerConfig);
-                        return null;
-                    }
-                });
+                handleItemListeners(n, qConfig::addItemListenerConfig);
             } else if ("statistics-enabled".equals(nodeName)) {
                 qConfig.setStatisticsEnabled(getBooleanValue(value));
             } else if ("queue-store".equals(nodeName)) {
@@ -1371,26 +1360,22 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addQueueConfig(qConfig);
     }
 
-    protected void handleItemListeners(Node n, Function<ItemListenerConfig, Void> configAddFunction) {
+    protected void handleItemListeners(Node n, Consumer<ItemListenerConfig> configAddFunction) {
         for (Node listenerNode : childElements(n)) {
             if ("item-listener".equals(cleanNodeName(listenerNode))) {
                 NamedNodeMap attrs = listenerNode.getAttributes();
                 boolean incValue = getBooleanValue(getTextContent(attrs.getNamedItem("include-value")));
                 String listenerClass = getTextContent(listenerNode);
-                configAddFunction.apply(new ItemListenerConfig(listenerClass, incValue));
+                configAddFunction.accept(new ItemListenerConfig(listenerClass, incValue));
             }
         }
     }
 
-    protected void handleList(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        ListConfig lConfig = new ListConfig();
-        lConfig.setName(name);
-        handleListNode(node, lConfig);
+    private void handleList(Node node) {
+        handleNode(node, listNode -> handleListNode(listNode, new ListConfig(extractName(listNode))));
     }
 
-    void handleListNode(Node node, final ListConfig lConfig) {
+    private void handleListNode(Node node, final ListConfig lConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -1401,13 +1386,7 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             } else if ("async-backup-count".equals(nodeName)) {
                 lConfig.setAsyncBackupCount(getIntegerValue("async-backup-count", value));
             } else if ("item-listeners".equals(nodeName)) {
-                handleItemListeners(n, new Function<ItemListenerConfig, Void>() {
-                    @Override
-                    public Void apply(ItemListenerConfig itemListenerConfig) {
-                        lConfig.addItemListenerConfig(itemListenerConfig);
-                        return null;
-                    }
-                });
+                handleItemListeners(n, lConfig::addItemListenerConfig);
             } else if ("statistics-enabled".equals(nodeName)) {
                 lConfig.setStatisticsEnabled(getBooleanValue(value));
             } else if ("quorum-ref".equals(nodeName)) {
@@ -1421,15 +1400,11 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addListConfig(lConfig);
     }
 
-    protected void handleSet(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        SetConfig sConfig = new SetConfig();
-        sConfig.setName(name);
-        handleSetNode(node, sConfig);
+    private void handleSet(Node node) {
+        handleNode(node, setNode -> handleSetNode(setNode, new SetConfig(extractName(setNode))));
     }
 
-    void handleSetNode(Node node, final SetConfig sConfig) {
+    private void handleSetNode(Node node, final SetConfig sConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -1440,13 +1415,7 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             } else if ("async-backup-count".equals(nodeName)) {
                 sConfig.setAsyncBackupCount(getIntegerValue("async-backup-count", value));
             } else if ("item-listeners".equals(nodeName)) {
-                handleItemListeners(n, new Function<ItemListenerConfig, Void>() {
-                    @Override
-                    public Void apply(ItemListenerConfig itemListenerConfig) {
-                        sConfig.addItemListenerConfig(itemListenerConfig);
-                        return null;
-                    }
-                });
+                handleItemListeners(n, sConfig::addItemListenerConfig);
             } else if ("statistics-enabled".equals(nodeName)) {
                 sConfig.setStatisticsEnabled(getBooleanValue(value));
             } else if ("quorum-ref".equals(nodeName)) {
@@ -1459,15 +1428,11 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addSetConfig(sConfig);
     }
 
-    protected void handleMultiMap(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        MultiMapConfig multiMapConfig = new MultiMapConfig();
-        multiMapConfig.setName(name);
-        handleMultiMapNode(node, multiMapConfig);
+    private void handleMultiMap(Node node) {
+        handleNode(node, multiMapNode -> handleMultiMapNode(multiMapNode, new MultiMapConfig(extractName(multiMapNode))));
     }
 
-    void handleMultiMapNode(Node node, final MultiMapConfig multiMapConfig) {
+    private void handleMultiMapNode(Node node, final MultiMapConfig multiMapConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -1480,13 +1445,7 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
                 multiMapConfig.setAsyncBackupCount(getIntegerValue("async-backup-count"
                         , value));
             } else if ("entry-listeners".equals(nodeName)) {
-                handleEntryListeners(n, new Function<EntryListenerConfig, Void>() {
-                    @Override
-                    public Void apply(EntryListenerConfig entryListenerConfig) {
-                        multiMapConfig.addEntryListenerConfig(entryListenerConfig);
-                        return null;
-                    }
-                });
+                handleEntryListeners(n, multiMapConfig::addEntryListenerConfig);
             } else if ("statistics-enabled".equals(nodeName)) {
                 multiMapConfig.setStatisticsEnabled(getBooleanValue(value));
             } else if ("binary".equals(nodeName)) {
@@ -1501,28 +1460,27 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addMultiMapConfig(multiMapConfig);
     }
 
-    protected void handleEntryListeners(Node n, Function<EntryListenerConfig, Void> configAddFunction) {
+    protected void handleEntryListeners(Node n, Consumer<EntryListenerConfig> configAddFunction) {
         for (Node listenerNode : childElements(n)) {
             if ("entry-listener".equals(cleanNodeName(listenerNode))) {
                 NamedNodeMap attrs = listenerNode.getAttributes();
                 boolean incValue = getBooleanValue(getTextContent(attrs.getNamedItem("include-value")));
                 boolean local = getBooleanValue(getTextContent(attrs.getNamedItem("local")));
                 String listenerClass = getTextContent(listenerNode);
-                configAddFunction.apply(new EntryListenerConfig(listenerClass, local, incValue));
+                configAddFunction.accept(new EntryListenerConfig(listenerClass, local, incValue));
             }
         }
     }
 
     @SuppressWarnings("deprecation")
-    protected void handleReplicatedMap(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        final ReplicatedMapConfig replicatedMapConfig = new ReplicatedMapConfig();
-        replicatedMapConfig.setName(name);
-        handleReplicatedMapNode(node, replicatedMapConfig);
+    private void handleReplicatedMap(Node node) {
+        handleNode(node, replicatedMapNode -> {
+            String name = extractName(replicatedMapNode);
+            handleReplicatedMapNode(replicatedMapNode, new ReplicatedMapConfig(name));
+        });
     }
 
-    void handleReplicatedMapNode(Node node, final ReplicatedMapConfig replicatedMapConfig) {
+    private void handleReplicatedMapNode(Node node, final ReplicatedMapConfig replicatedMapConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -1537,13 +1495,7 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             } else if ("statistics-enabled".equals(nodeName)) {
                 replicatedMapConfig.setStatisticsEnabled(getBooleanValue(value));
             } else if ("entry-listeners".equals(nodeName)) {
-                handleEntryListeners(n, new Function<EntryListenerConfig, Void>() {
-                    @Override
-                    public Void apply(EntryListenerConfig entryListenerConfig) {
-                        replicatedMapConfig.addEntryListenerConfig(entryListenerConfig);
-                        return null;
-                    }
-                });
+                handleEntryListeners(n, replicatedMapConfig::addEntryListenerConfig);
             } else if ("merge-policy".equals(nodeName)) {
                 MergePolicyConfig mergePolicyConfig = createMergePolicyConfig(n);
                 replicatedMapConfig.setMergePolicyConfig(mergePolicyConfig);
@@ -1555,14 +1507,11 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
     }
 
     @SuppressWarnings("deprecation")
-    protected void handleMap(Node parentNode) {
-        String name = getAttribute(parentNode, "name");
-        MapConfig mapConfig = new MapConfig();
-        mapConfig.setName(name);
-        handleMapNode(parentNode, mapConfig);
+    private void handleMap(Node node) {
+        handleNode(node, mapNode -> handleMapNode(mapNode, new MapConfig(extractName(mapNode))));
     }
 
-    void handleMapNode(Node parentNode, final MapConfig mapConfig) {
+    private void handleMapNode(Node parentNode, final MapConfig mapConfig) {
         for (Node node : childElements(parentNode)) {
             String nodeName = cleanNodeName(node);
             String value = getTextContent(node).trim();
@@ -1616,13 +1565,7 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             } else if ("attributes".equals(nodeName)) {
                 mapAttributesHandle(node, mapConfig);
             } else if ("entry-listeners".equals(nodeName)) {
-                handleEntryListeners(node, new Function<EntryListenerConfig, Void>() {
-                    @Override
-                    public Void apply(EntryListenerConfig entryListenerConfig) {
-                        mapConfig.addEntryListenerConfig(entryListenerConfig);
-                        return null;
-                    }
-                });
+                handleEntryListeners(node, mapConfig::addEntryListenerConfig);
             } else if ("partition-lost-listeners".equals(nodeName)) {
                 mapPartitionLostListenerHandle(node, mapConfig);
             } else if ("partition-strategy".equals(nodeName)) {
@@ -1711,14 +1654,15 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         return hotRestartConfig;
     }
 
-    protected void handleCache(Node node) {
-        String name = getAttribute(node, "name");
-        CacheSimpleConfig cacheConfig = new CacheSimpleConfig();
-        cacheConfig.setName(name);
-        handleCacheNode(node, cacheConfig);
+    private void handleCache(Node node) {
+        handleNode(node, cacheNode -> {
+            CacheSimpleConfig cacheConfig = new CacheSimpleConfig();
+            cacheConfig.setName(extractName(cacheNode));
+            handleCacheNode(cacheNode, cacheConfig);
+        });
     }
 
-    void handleCacheNode(Node node, CacheSimpleConfig cacheConfig) {
+    private void handleCacheNode(Node node, CacheSimpleConfig cacheConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -1926,14 +1870,15 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         cacheSimpleConfig.addEntryListenerConfig(listenerConfig);
     }
 
-    protected void mapWanReplicationRefHandle(Node n, MapConfig mapConfig) {
-        WanReplicationRef wanReplicationRef = new WanReplicationRef();
-        String wanName = getAttribute(n, "name");
-        wanReplicationRef.setName(wanName);
-        handleMapWanReplicationRefNode(n, mapConfig, wanReplicationRef);
+    private void mapWanReplicationRefHandle(Node node, MapConfig mapConfig) {
+        handleNode(node, mapNode -> {
+            WanReplicationRef wanReplicationRef = new WanReplicationRef();
+            wanReplicationRef.setName(extractName(mapNode));
+            handleMapWanReplicationRefNode(mapNode, mapConfig, wanReplicationRef);
+        });
     }
 
-    void handleMapWanReplicationRefNode(Node n, MapConfig mapConfig, WanReplicationRef wanReplicationRef) {
+    private void handleMapWanReplicationRefNode(Node n, MapConfig mapConfig, WanReplicationRef wanReplicationRef) {
         for (Node wanChild : childElements(n)) {
             String wanChildName = cleanNodeName(wanChild);
             String wanChildValue = getTextContent(wanChild);
@@ -2005,13 +1950,7 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         for (Node childNode : childElements(queryCacheNode)) {
             String nodeName = cleanNodeName(childNode);
             if ("entry-listeners".equals(nodeName)) {
-                handleEntryListeners(childNode, new Function<EntryListenerConfig, Void>() {
-                    @Override
-                    public Void apply(EntryListenerConfig entryListenerConfig) {
-                        queryCacheConfig.addEntryListenerConfig(entryListenerConfig);
-                        return null;
-                    }
-                });
+                handleEntryListeners(childNode, queryCacheConfig::addEntryListenerConfig);
             } else {
                 String textContent = getTextContent(childNode);
                 if ("include-value".equals(nodeName)) {
@@ -2269,27 +2208,17 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         endpointConfig.setSocketInterceptorConfig(socketInterceptorConfig);
     }
 
-        protected void handleTopic(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        TopicConfig tConfig = new TopicConfig();
-        tConfig.setName(name);
-        handleTopicNode(node, tConfig);
+    private void handleTopic(Node node) {
+        handleNode(node, topicNode -> handleTopicNode(topicNode, new TopicConfig(extractName(topicNode))));
     }
 
-    void handleTopicNode(Node node, final TopicConfig tConfig) {
+    private void handleTopicNode(Node node, final TopicConfig tConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             if (nodeName.equals("global-ordering-enabled")) {
                 tConfig.setGlobalOrderingEnabled(getBooleanValue(getTextContent(n)));
             } else if ("message-listeners".equals(nodeName)) {
-                handleMessageListeners(n, new Function<ListenerConfig, Void>() {
-                    @Override
-                    public Void apply(ListenerConfig listenerConfig) {
-                        tConfig.addMessageListenerConfig(listenerConfig);
-                        return null;
-                    }
-                });
+                handleMessageListeners(n, tConfig::addMessageListenerConfig);
             } else if ("statistics-enabled".equals(nodeName)) {
                 tConfig.setStatisticsEnabled(getBooleanValue(getTextContent(n)));
             } else if ("multi-threading-enabled".equals(nodeName)) {
@@ -2299,14 +2228,11 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addTopicConfig(tConfig);
     }
 
-    protected void handleReliableTopic(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        ReliableTopicConfig topicConfig = new ReliableTopicConfig(name);
-        handleReliableTopicNode(node, topicConfig);
+    private void handleReliableTopic(Node node) {
+        handleNode(node, topicNode -> handleReliableTopicNode(topicNode, new ReliableTopicConfig(extractName(topicNode))));
     }
 
-    void handleReliableTopicNode(Node node, final ReliableTopicConfig topicConfig) {
+    private void handleReliableTopicNode(Node node, final ReliableTopicConfig topicConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             if ("read-batch-size".equals(nodeName)) {
@@ -2318,32 +2244,24 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
                 TopicOverloadPolicy topicOverloadPolicy = TopicOverloadPolicy.valueOf(upperCaseInternal(getTextContent(n)));
                 topicConfig.setTopicOverloadPolicy(topicOverloadPolicy);
             } else if ("message-listeners".equals(nodeName)) {
-                handleMessageListeners(n, new Function<ListenerConfig, Void>() {
-                    @Override
-                    public Void apply(ListenerConfig listenerConfig) {
-                        topicConfig.addMessageListenerConfig(listenerConfig);
-                        return null;
-                    }
-                });
+                handleMessageListeners(n, topicConfig::addMessageListenerConfig);
             }
         }
         config.addReliableTopicConfig(topicConfig);
     }
 
-    void handleMessageListeners(Node n, Function<ListenerConfig, Void> configAddFunction) {
+    void handleMessageListeners(Node n, Consumer<ListenerConfig> configAddFunction) {
         for (Node listenerNode : childElements(n)) {
             if ("message-listener".equals(cleanNodeName(listenerNode))) {
-                configAddFunction.apply(new ListenerConfig(getTextContent(listenerNode)));
+                configAddFunction.accept(new ListenerConfig(getTextContent(listenerNode)));
             }
         }
     }
 
     @SuppressWarnings("deprecation")
     private void handleJobTracker(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
         JobTrackerConfig jConfig = new JobTrackerConfig();
-        jConfig.setName(name);
+        jConfig.setName(extractName(node));
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -2370,15 +2288,15 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addJobTrackerConfig(jConfig);
     }
 
-    protected void handleSemaphore(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        SemaphoreConfig sConfig = new SemaphoreConfig();
-        sConfig.setName(name);
-        handleSemaphoreNode(node, sConfig);
+    private void handleSemaphore(Node node) {
+        handleNode(node, semaphoreNode -> {
+            SemaphoreConfig sConfig = new SemaphoreConfig();
+            sConfig.setName(extractName(semaphoreNode));
+            handleSemaphoreNode(semaphoreNode, sConfig);
+        });
     }
 
-    void handleSemaphoreNode(Node node, SemaphoreConfig sConfig) {
+    private void handleSemaphoreNode(Node node, SemaphoreConfig sConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -2409,14 +2327,11 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addMerkleTreeConfig(merkleTreeConfig);
     }
 
-    protected void handleRingbuffer(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        RingbufferConfig rbConfig = new RingbufferConfig(name);
-        handleRingBufferNode(node, rbConfig);
+    private void handleRingbuffer(Node node) {
+        handleNode(node, rbNode -> handleRingBufferNode(rbNode, new RingbufferConfig(extractName(rbNode))));
     }
 
-    void handleRingBufferNode(Node node, RingbufferConfig rbConfig) {
+    private void handleRingBufferNode(Node node, RingbufferConfig rbConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -2448,14 +2363,12 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addRingBufferConfig(rbConfig);
     }
 
-    protected void handleAtomicLong(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        AtomicLongConfig atomicLongConfig = new AtomicLongConfig(name);
-        handleAtomicLongNode(node, atomicLongConfig);
+    private void handleAtomicLong(Node node) {
+        handleNode(node,
+                atomicLongNode -> handleAtomicLongNode(atomicLongNode, new AtomicLongConfig(extractName(atomicLongNode))));
     }
 
-    void handleAtomicLongNode(Node node, AtomicLongConfig atomicLongConfig) {
+    private void handleAtomicLongNode(Node node, AtomicLongConfig atomicLongConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -2469,14 +2382,12 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addAtomicLongConfig(atomicLongConfig);
     }
 
-    protected void handleAtomicReference(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        AtomicReferenceConfig atomicReferenceConfig = new AtomicReferenceConfig(name);
-        handleAtomicReferenceNode(node, atomicReferenceConfig);
+    private void handleAtomicReference(Node node) {
+        handleNode(node,
+                atomicRefNode -> handleAtomicReferenceNode(atomicRefNode, new AtomicReferenceConfig(extractName(atomicRefNode))));
     }
 
-    void handleAtomicReferenceNode(Node node, AtomicReferenceConfig atomicReferenceConfig) {
+    private void handleAtomicReferenceNode(Node node, AtomicReferenceConfig atomicReferenceConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -2490,14 +2401,11 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
         config.addAtomicReferenceConfig(atomicReferenceConfig);
     }
 
-    protected void handleCountDownLatchConfig(Node node) {
-        Node attName = node.getAttributes().getNamedItem("name");
-        String name = getTextContent(attName);
-        CountDownLatchConfig countDownLatchConfig = new CountDownLatchConfig(name);
-        handleCountDownLatchNode(node, countDownLatchConfig);
+    private void handleCountDownLatchConfig(Node node) {
+        handleNode(node, latchNode -> handleCountDownLatchNode(latchNode, new CountDownLatchConfig(extractName(latchNode))));
     }
 
-    void handleCountDownLatchNode(Node node, CountDownLatchConfig countDownLatchConfig) {
+    private void handleCountDownLatchNode(Node node, CountDownLatchConfig countDownLatchConfig) {
         for (Node n : childElements(node)) {
             String nodeName = cleanNodeName(n);
             String value = getTextContent(n).trim();
@@ -2959,6 +2867,7 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
     void handleCPSemaphores(CPSubsystemConfig cpSubsystemConfig, Node node) {
         for (Node child : childElements(node)) {
             CPSemaphoreConfig cpSemaphoreConfig = new CPSemaphoreConfig();
+            cpSemaphoreConfig.setName(extractName(child));
             for (Node subChild : childElements(child)) {
                 String nodeName = cleanNodeName(subChild);
                 String value = getTextContent(subChild).trim();
@@ -2986,5 +2895,13 @@ class MemberDomConfigProcessor extends AbstractDomConfigProcessor {
             }
             cpSubsystemConfig.addLockConfig(lockConfig);
         }
+    }
+
+    protected void handleNode(Node node, Consumer<Node> consumer) {
+        consumer.accept(node);
+    }
+
+    protected void handleNodeMayThrow(Node node, ThrowingConsumer<Node, Exception> consumer) throws Exception {
+        consumer.accept(node);
     }
 }

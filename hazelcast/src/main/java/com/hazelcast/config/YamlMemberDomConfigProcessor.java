@@ -19,12 +19,11 @@ package com.hazelcast.config;
 import com.hazelcast.config.cp.CPSemaphoreConfig;
 import com.hazelcast.config.cp.CPSubsystemConfig;
 import com.hazelcast.config.cp.FencedLockConfig;
-import com.hazelcast.instance.ProtocolType;
 import com.hazelcast.internal.yaml.YamlMapping;
 import com.hazelcast.internal.yaml.YamlNode;
 import com.hazelcast.internal.yaml.YamlScalar;
 import com.hazelcast.internal.yaml.YamlSequence;
-import com.hazelcast.util.function.Function;
+import com.hazelcast.util.function.ThrowingConsumer;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -32,6 +31,7 @@ import org.w3c.dom.NodeList;
 import java.nio.ByteOrder;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.Consumer;
 
 import static com.hazelcast.config.DomConfigHelper.childElements;
 import static com.hazelcast.config.DomConfigHelper.cleanNodeName;
@@ -146,6 +146,7 @@ class YamlMemberDomConfigProcessor extends MemberDomConfigProcessor {
         }
     }
 
+    @Override
     protected void handleLoginModules(Node node, boolean member, Config config) {
         SecurityConfig cfg = config.getSecurityConfig();
         for (Node child : childElements(node)) {
@@ -169,11 +170,16 @@ class YamlMemberDomConfigProcessor extends MemberDomConfigProcessor {
     }
 
     @Override
-    protected void handleWanReplication(Node node) {
-        for (Node wanReplicationNode : childElements(node)) {
-            WanReplicationConfig wanReplicationConfig = new WanReplicationConfig();
-            wanReplicationConfig.setName(wanReplicationNode.getNodeName());
-            handleWanReplicationNode(wanReplicationNode, wanReplicationConfig);
+    protected void handleNode(Node node, Consumer<Node> consumer) {
+        for (Node child : childElements(node)) {
+            consumer.accept(child);
+        }
+    }
+
+    @Override
+    protected void handleNodeMayThrow(Node node, ThrowingConsumer<Node, Exception> consumer) throws Exception {
+        for (Node child : childElements(node)) {
+            consumer.accept(child);
         }
     }
 
@@ -216,133 +222,6 @@ class YamlMemberDomConfigProcessor extends MemberDomConfigProcessor {
                 int portCount = parseInt(value);
                 networkConfig.setPortCount(portCount);
             }
-        }
-    }
-
-    @Override
-    protected void handleSemaphore(Node node) {
-        for (Node semaphoreNode : childElements(node)) {
-            SemaphoreConfig sConfig = new SemaphoreConfig();
-            sConfig.setName(semaphoreNode.getNodeName());
-            handleSemaphoreNode(semaphoreNode, sConfig);
-        }
-    }
-
-    @Override
-    protected void handleQueue(Node node) {
-        for (Node queueNode : childElements(node)) {
-            QueueConfig queueConfig = new QueueConfig();
-            queueConfig.setName(queueNode.getNodeName());
-            handleQueueNode(queueNode, queueConfig);
-        }
-    }
-
-    @Override
-    protected void handleList(Node node) {
-        for (Node listNode : childElements(node)) {
-            ListConfig listConfig = new ListConfig();
-            listConfig.setName(listNode.getNodeName());
-            handleListNode(listNode, listConfig);
-        }
-    }
-
-    @Override
-    protected void handleSet(Node node) {
-        for (Node setNode : childElements(node)) {
-            SetConfig setConfig = new SetConfig();
-            setConfig.setName(setNode.getNodeName());
-            handleSetNode(setNode, setConfig);
-        }
-    }
-
-    @Override
-    protected void handleLock(Node node) {
-        for (Node lockNode : childElements(node)) {
-            LockConfig lockConfig = new LockConfig();
-            lockConfig.setName(lockNode.getNodeName());
-            handleLockNode(lockNode, lockConfig);
-        }
-    }
-
-    @Override
-    protected void handleReliableTopic(Node node) {
-        for (Node topicNode : childElements(node)) {
-            ReliableTopicConfig topicConfig = new ReliableTopicConfig();
-            topicConfig.setName(topicNode.getNodeName());
-            handleReliableTopicNode(topicNode, topicConfig);
-        }
-    }
-
-    @Override
-    protected void handleTopic(Node node) {
-        for (Node topicNode : childElements(node)) {
-            TopicConfig topicConfig = new TopicConfig();
-            topicConfig.setName(topicNode.getNodeName());
-            handleTopicNode(topicNode, topicConfig);
-        }
-    }
-
-    @Override
-    protected void handleRingbuffer(Node node) {
-        for (Node rbNode : childElements(node)) {
-            RingbufferConfig ringBufferConfig = new RingbufferConfig();
-            ringBufferConfig.setName(rbNode.getNodeName());
-            handleRingBufferNode(rbNode, ringBufferConfig);
-        }
-    }
-
-    @Override
-    protected void handleAtomicLong(Node node) {
-        for (Node atomicLongNode : childElements(node)) {
-            AtomicLongConfig atomicLongConfig = new AtomicLongConfig();
-            atomicLongConfig.setName(atomicLongNode.getNodeName());
-            handleAtomicLongNode(atomicLongNode, atomicLongConfig);
-        }
-    }
-
-    @Override
-    protected void handleAtomicReference(Node node) {
-        for (Node atomicReferenceNode : childElements(node)) {
-            AtomicReferenceConfig atomicReferenceConfig = new AtomicReferenceConfig();
-            atomicReferenceConfig.setName(atomicReferenceNode.getNodeName());
-            handleAtomicReferenceNode(atomicReferenceNode, atomicReferenceConfig);
-        }
-    }
-
-    @Override
-    protected void handleCountDownLatchConfig(Node node) {
-        for (Node countDownLatchNode : childElements(node)) {
-            CountDownLatchConfig countDownLatchConfig = new CountDownLatchConfig();
-            countDownLatchConfig.setName(countDownLatchNode.getNodeName());
-            handleCountDownLatchNode(countDownLatchNode, countDownLatchConfig);
-        }
-    }
-
-    @Override
-    protected void handleMap(Node parentNode) {
-        for (Node mapNode : childElements(parentNode)) {
-            MapConfig mapConfig = new MapConfig();
-            mapConfig.setName(mapNode.getNodeName());
-            handleMapNode(mapNode, mapConfig);
-        }
-    }
-
-    @Override
-    protected void handleCache(Node parentNode) {
-        for (Node cacheNode : childElements(parentNode)) {
-            CacheSimpleConfig cacheConfig = new CacheSimpleConfig();
-            cacheConfig.setName(cacheNode.getNodeName());
-            handleCacheNode(cacheNode, cacheConfig);
-        }
-    }
-
-    @Override
-    protected void handleQuorum(Node node) {
-        for (Node quorumNode : childElements(node)) {
-            QuorumConfig quorumConfig = new QuorumConfig();
-            String quorumName = quorumNode.getNodeName();
-            quorumConfig.setName(quorumName);
-            handleQuorumNode(quorumNode, quorumConfig, quorumName);
         }
     }
 
@@ -393,87 +272,6 @@ class YamlMemberDomConfigProcessor extends MemberDomConfigProcessor {
             MerkleTreeConfig merkleTreeConfig = new MerkleTreeConfig();
             merkleTreeConfig.setMapName(journalNode.getNodeName());
             handleViaReflection(journalNode, config, merkleTreeConfig);
-        }
-    }
-
-    @Override
-    protected void handleFlakeIdGenerator(Node node) {
-        for (Node genNode : childElements(node)) {
-            FlakeIdGeneratorConfig genConfig = new FlakeIdGeneratorConfig();
-            genConfig.setName(genNode.getNodeName());
-            handleFlakeIdGeneratorNode(genNode, genConfig);
-        }
-    }
-
-    @Override
-    protected void handleExecutor(Node node) throws Exception {
-        for (Node executorNode : childElements(node)) {
-            ExecutorConfig executorConfig = new ExecutorConfig();
-            executorConfig.setName(executorNode.getNodeName());
-            handleViaReflection(executorNode, config, executorConfig);
-        }
-    }
-
-    @Override
-    protected void handleDurableExecutor(Node node) throws Exception {
-        for (Node executorNode : childElements(node)) {
-            DurableExecutorConfig executorConfig = new DurableExecutorConfig();
-            executorConfig.setName(executorNode.getNodeName());
-            handleViaReflection(executorNode, config, executorConfig);
-        }
-    }
-
-    @Override
-    protected void handleScheduledExecutor(Node node) {
-        for (Node executorNode : childElements(node)) {
-            ScheduledExecutorConfig executorConfig = new ScheduledExecutorConfig();
-            executorConfig.setName(executorNode.getNodeName());
-            handleScheduledExecutorNode(executorNode, executorConfig);
-        }
-    }
-
-    @Override
-    protected void handleCardinalityEstimator(Node node) {
-        for (Node estimatorNode : childElements(node)) {
-            CardinalityEstimatorConfig estimatorConfig = new CardinalityEstimatorConfig();
-            estimatorConfig.setName(estimatorNode.getNodeName());
-            handleCardinalityEstimatorNode(estimatorNode, estimatorConfig);
-        }
-    }
-
-    @Override
-    protected void handlePNCounter(Node node) throws Exception {
-        for (Node counterNode : childElements(node)) {
-            PNCounterConfig counterConfig = new PNCounterConfig();
-            counterConfig.setName(counterNode.getNodeName());
-            handleViaReflection(counterNode, config, counterConfig);
-        }
-    }
-
-    @Override
-    protected void handleMultiMap(Node node) {
-        for (Node multiMapNode : childElements(node)) {
-            MultiMapConfig multiMapConfig = new MultiMapConfig();
-            multiMapConfig.setName(multiMapNode.getNodeName());
-            handleMultiMapNode(multiMapNode, multiMapConfig);
-        }
-    }
-
-    @Override
-    protected void handleReplicatedMap(Node node) {
-        for (Node replicatedMapNode : childElements(node)) {
-            ReplicatedMapConfig replicatedMapConfig = new ReplicatedMapConfig();
-            replicatedMapConfig.setName(replicatedMapNode.getNodeName());
-            handleReplicatedMapNode(replicatedMapNode, replicatedMapConfig);
-        }
-    }
-
-    @Override
-    protected void mapWanReplicationRefHandle(Node n, MapConfig mapConfig) {
-        for (Node mapNode : childElements(n)) {
-            WanReplicationRef wanReplicationRef = new WanReplicationRef();
-            wanReplicationRef.setName(mapNode.getNodeName());
-            handleMapWanReplicationRefNode(mapNode, mapConfig, wanReplicationRef);
         }
     }
 
@@ -607,31 +405,31 @@ class YamlMemberDomConfigProcessor extends MemberDomConfigProcessor {
     }
 
     @Override
-    protected void handleItemListeners(Node n, Function<ItemListenerConfig, Void> configAddFunction) {
+    protected void handleItemListeners(Node n, Consumer<ItemListenerConfig> configAddFunction) {
         for (Node listenerNode : childElements(n)) {
             NamedNodeMap attrs = listenerNode.getAttributes();
             boolean incValue = getBooleanValue(getTextContent(attrs.getNamedItem("include-value")));
             String listenerClass = getTextContent(attrs.getNamedItem("class-name"));
-            configAddFunction.apply(new ItemListenerConfig(listenerClass, incValue));
+            configAddFunction.accept(new ItemListenerConfig(listenerClass, incValue));
         }
     }
 
     @Override
-    protected void handleEntryListeners(Node n, Function<EntryListenerConfig, Void> configAddFunction) {
+    protected void handleEntryListeners(Node n, Consumer<EntryListenerConfig> configAddFunction) {
         for (Node listenerNode : childElements(n)) {
             NamedNodeMap attrs = listenerNode.getAttributes();
             boolean incValue = getBooleanValue(getTextContent(attrs.getNamedItem("include-value")));
             boolean local = getBooleanValue(getTextContent(attrs.getNamedItem("local")));
             String listenerClass = getTextContent(attrs.getNamedItem("class-name"));
-            configAddFunction.apply(new EntryListenerConfig(listenerClass, local, incValue));
+            configAddFunction.accept(new EntryListenerConfig(listenerClass, local, incValue));
         }
     }
 
     @Override
-    void handleMessageListeners(Node n, Function<ListenerConfig, Void> configAddFunction) {
+    void handleMessageListeners(Node n, Consumer<ListenerConfig> configAddFunction) {
         for (Node listenerNode : childElements(n)) {
             String listenerClass = listenerNode.getNodeValue().trim();
-            configAddFunction.apply(new ListenerConfig(listenerClass));
+            configAddFunction.accept(new ListenerConfig(listenerClass));
         }
     }
 
@@ -908,26 +706,6 @@ class YamlMemberDomConfigProcessor extends MemberDomConfigProcessor {
             }
         }
         handlePortAttributes(node, endpointConfig);
-    }
-
-    @Override
-    protected void handleWanServerSocketEndpointConfig(Node node) throws Exception {
-        for (Node wanEndpointNode : childElements(node)) {
-            ServerSocketEndpointConfig config = new ServerSocketEndpointConfig();
-            config.setProtocolType(ProtocolType.WAN);
-            String name = wanEndpointNode.getNodeName();
-            handleServerSocketEndpointConfig(config, wanEndpointNode, name);
-        }
-    }
-
-    @Override
-    protected void handleWanEndpointConfig(Node node) throws Exception {
-        for (Node wanEndpointNode : childElements(node)) {
-            EndpointConfig config = new EndpointConfig();
-            config.setProtocolType(ProtocolType.WAN);
-            String endpointName = wanEndpointNode.getNodeName().trim();
-            handleEndpointConfig(config, wanEndpointNode, endpointName);
-        }
     }
 
     @Override

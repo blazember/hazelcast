@@ -75,14 +75,18 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
     private final AtomicInteger numThreads = new AtomicInteger(0);
     private final int maxThreads;
 
+    private final HazelcastSerialClassRunner serialClassRunner;
+
     public HazelcastParallelClassRunner(Class<?> clazz) throws InitializationError {
         super(clazz);
         maxThreads = getMaxThreads(clazz);
+        serialClassRunner = new HazelcastSerialClassRunner(clazz);
     }
 
     public HazelcastParallelClassRunner(Class<?> clazz, Object[] parameters, String name) throws InitializationError {
         super(clazz, parameters, name);
         maxThreads = getMaxThreads(clazz);
+        serialClassRunner = new HazelcastSerialClassRunner(clazz, parameters, name);
     }
 
     private int getMaxThreads(Class<?> clazz) throws InitializationError {
@@ -107,16 +111,17 @@ public class HazelcastParallelClassRunner extends AbstractHazelcastClassRunner {
 
     @Override
     protected void runChild(final FrameworkMethod method, final RunNotifier notifier) {
-        while (numThreads.get() >= maxThreads) {
-            try {
-                Thread.sleep(25);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            }
-        }
-        numThreads.incrementAndGet();
-        new MultithreadedTestRunnerThread(new TestRunner(method, notifier)).start();
+        //        while (numThreads.get() >= maxThreads) {
+        //            try {
+        //                Thread.sleep(25);
+        //            } catch (InterruptedException e) {
+        //                Thread.currentThread().interrupt();
+        //                return;
+        //            }
+        //        }
+        //        numThreads.incrementAndGet();
+        //        new MultithreadedTestRunnerThread(new TestRunner(method, notifier)).start();
+        serialClassRunner.runChild(method, notifier);
     }
 
     @Override

@@ -16,6 +16,8 @@
 
 package com.hazelcast.test;
 
+import org.junit.runner.Description;
+import org.junit.runner.notification.RunListener;
 import org.junit.runner.notification.RunNotifier;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
@@ -27,20 +29,26 @@ import java.util.Properties;
  * Run the tests in series and log the duration of the running test.
  */
 public class HazelcastSerialClassRunner extends AbstractHazelcastClassRunner {
+    private final TestRunListener runListener = new TestRunListener();
 
     public HazelcastSerialClassRunner(Class<?> clazz) throws InitializationError {
         super(clazz);
+        TestMetrics.INSTANCE.ensureRunning();
     }
 
     public HazelcastSerialClassRunner(Class<?> clazz, Object[] parameters, String name) throws InitializationError {
         super(clazz, parameters, name);
+        TestMetrics.INSTANCE.ensureRunning();
     }
 
     @Override
     protected void runChild(FrameworkMethod method, RunNotifier notifier) {
         // save the current system properties
         Properties currentSystemProperties = System.getProperties();
+        String testClassName = getTestClass().getJavaClass().getSimpleName();
         String testName = testName(method);
+        runListener.setTest(testClassName, testName);
+        notifier.addListener(runListener);
         setThreadLocalTestMethodName(testName);
         try {
             // use local system properties so se tests don't effect each other
@@ -54,7 +62,12 @@ public class HazelcastSerialClassRunner extends AbstractHazelcastClassRunner {
             removeThreadLocalTestMethodName();
             // restore the system properties
             System.setProperties(currentSystemProperties);
+            notifier.removeListener(runListener);
         }
+    }
+
+    protected String getEdition() {
+        return "OSS";
     }
 
     private static class LocalProperties extends Properties {
@@ -67,6 +80,30 @@ public class HazelcastSerialClassRunner extends AbstractHazelcastClassRunner {
             for (Map.Entry entry : properties.entrySet()) {
                 put(entry.getKey(), entry.getValue());
             }
+        }
+    }
+
+    private class TestRunListener extends RunListener {
+        private final TestMetrics testMetrics = TestMetrics.INSTANCE;
+
+        private volatile String testClassName;
+        private volatile String testName;
+        private volatile long startTime;
+
+        private void setTest(String testClassName, String testName) {
+            this.testClassName = testClassName;
+            this.testName = testName;
+        }
+
+        @Override
+        public void testStarted(Description description) throws Exception {
+            startTime = System.currentTimeMillis();
+        }
+
+        @Override
+        public void testFinished(Description description) throws Exception {
+            long executionTime = System.currentTimeMillis() - startTime;
+            testMetrics.recordMetrics(getEdition(), testClassName, testName, executionTime);
         }
     }
 }

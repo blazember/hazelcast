@@ -103,7 +103,7 @@ public class HazelcastSerialClassRunner extends AbstractHazelcastClassRunner {
         @Override
         public void testFinished(Description description) throws Exception {
             long executionTime = System.currentTimeMillis() - startTime;
-            testMetrics.recordMetrics(getEdition(), testClassName, testName, executionTime);
+            testMetrics.recordMetrics(getEdition(), testClassName, testName, executionTime, startTime);
         }
     }
 }

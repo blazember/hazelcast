@@ -19,6 +19,7 @@ package com.hazelcast.test;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
+import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.ThreadMXBean;
 import java.sql.CallableStatement;
 import java.sql.Connection;
@@ -42,10 +43,12 @@ class TestMetrics {
     private final GarbageCollectorMXBean minorGcMXBean;
     private final GarbageCollectorMXBean majorGcMXBean;
     private final MetricsPersister metricsPersister;
+    private final OperatingSystemMXBean operatingSystemMXBean;
 
     private TestMetrics() {
         threadMXBean = ManagementFactory.getThreadMXBean();
         memoryMXBean = ManagementFactory.getMemoryMXBean();
+        operatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
         minorGcMXBean = ManagementFactory.getGarbageCollectorMXBeans().get(0);
         majorGcMXBean = ManagementFactory.getGarbageCollectorMXBeans().get(1);
 
@@ -60,7 +63,7 @@ class TestMetrics {
         // NOP
     }
 
-    void recordMetrics(String edition, String testClassName, String testName, long executionTime) {
+    void recordMetrics(String edition, String testClassName, String testName, long executionTime, long startTime) {
         recordSnapshot();
 
         // well, this is fine for this purpose... :)
@@ -68,7 +71,8 @@ class TestMetrics {
         metricsRef.getAndSet(new Metrics(oldMetrics));
 
         ManagementFactory.getThreadMXBean().resetPeakThreadCount();
-        metricsPersister.metricsQueue.offer(new MetricsTask(edition, testClassName, testName, oldMetrics, executionTime));
+        metricsPersister.metricsQueue.offer(new MetricsTask(edition, testClassName, testName, oldMetrics, executionTime,
+                startTime));
     }
 
     private void recordSnapshot() {
@@ -91,6 +95,11 @@ class TestMetrics {
             metrics.peakNonHeapUsage = usedNonHeap;
         }
 
+        double load = operatingSystemMXBean.getSystemLoadAverage();
+        if (load > metrics.peakLoad1) {
+            metrics.peakLoad1 = load;
+        }
+
         // GC
         long minorGcTime = minorGcMXBean.getCollectionTime();
         long minorGcCount = minorGcMXBean.getCollectionCount();
@@ -105,6 +114,7 @@ class TestMetrics {
     class Metrics {
         private int peakAliveThreads;
         private int startedThreads;
+        private double peakLoad1;
         private long totalMinorGcTime;
         private long totalMinorGc;
         private long totalMajorGcTime;
@@ -127,6 +137,10 @@ class TestMetrics {
             totalMinorGcAtCreation = oldMetrics.totalMinorGc;
             totalMajorGcTimeAtCreation = oldMetrics.totalMajorGcTime;
             totalMajorGcAtCreation = oldMetrics.totalMajorGc;
+        }
+
+        public double getPeakLoad1() {
+            return peakLoad1;
         }
 
         public int getPeakAliveThreads() {
@@ -163,75 +177,18 @@ class TestMetrics {
 
         @Override
         public String toString() {
-            return "Metrics{" +
-                    "peakAliveThreads=" + getPeakAliveThreads() +
-                    ", startedThreads=" + getStartedThreads() +
-                    ", totalMinorGcTime=" + getTotalMinorGcTime() +
-                    ", totalMinorGc=" + getTotalMinorGc() +
-                    ", totalMajorGcTime=" + getTotalMajorGcTime() +
-                    ", totalMajorGc=" + getTotalMajorGc() +
-                    ", peakHeapUsage=" + getPeakHeapUsage() +
-                    ", peakNonHeapUsage=" + getPeakNonHeapUsage() +
-                    '}';
+            return "Metrics{"
+                    + "peakAliveThreads=" + getPeakAliveThreads()
+                    + ", startedThreads=" + getStartedThreads()
+                    + ", totalMinorGcTime=" + getTotalMinorGcTime()
+                    + ", totalMinorGc=" + getTotalMinorGc()
+                    + ", totalMajorGcTime=" + getTotalMajorGcTime()
+                    + ", totalMajorGc=" + getTotalMajorGc()
+                    + ", peakHeapUsage=" + getPeakHeapUsage()
+                    + ", peakNonHeapUsage=" + getPeakNonHeapUsage()
+                    + '}';
         }
     }
-    //
-    //    private class MetricsUpdaterThread extends Thread {
-    //
-    //        private final ThreadMXBean threadMXBean;
-    //        private final MemoryMXBean memoryMXBean;
-    //        private final GarbageCollectorMXBean minorGcMXBean;
-    //        private final GarbageCollectorMXBean majorGcMXBean;
-    //
-    //        private MetricsUpdaterThread() {
-    //            threadMXBean = ManagementFactory.getThreadMXBean();
-    //            memoryMXBean = ManagementFactory.getMemoryMXBean();
-    //            minorGcMXBean = ManagementFactory.getGarbageCollectorMXBeans().get(0);
-    //            majorGcMXBean = ManagementFactory.getGarbageCollectorMXBeans().get(1);
-    //        }
-    //
-    //        @Override
-    //        public void run() {
-    //            try {
-    //                while (true) {
-    //                    TimeUnit.SECONDS.sleep(1);
-    //
-    //                    reco
-    //
-    //                    // threads
-    //                    int peakThreadCount = threadMXBean.getPeakThreadCount();
-    //                    long startedThreadCount = threadMXBean.getTotalStartedThreadCount();
-    //                    Metrics metrics = metricsRef.get();
-    //                    if (peakThreadCount > metrics.peakAliveThreads) {
-    //                        metrics.peakAliveThreads = peakThreadCount;
-    //                    }
-    //                    metrics.startedThreads += startedThreadCount - metrics.startedThreads;
-    //
-    //                    // memory
-    //                    long usedHeap = memoryMXBean.getHeapMemoryUsage().getUsed();
-    //                    long usedNonHeap = memoryMXBean.getNonHeapMemoryUsage().getUsed();
-    //                    if (usedHeap > metrics.peakHeapUsage) {
-    //                        metrics.peakHeapUsage = usedHeap;
-    //                    }
-    //                    if (usedNonHeap > metrics.peakNonHeapUsage) {
-    //                        metrics.peakNonHeapUsage = usedNonHeap;
-    //                    }
-    //
-    //                    // GC
-    //                    long minorGcTime = minorGcMXBean.getCollectionTime();
-    //                    long minorGcCount = minorGcMXBean.getCollectionCount();
-    //                    long majorGcTime = majorGcMXBean.getCollectionTime();
-    //                    long majorGcCount = majorGcMXBean.getCollectionCount();
-    //                    metrics.totalMinorGc += minorGcCount - metrics.totalMinorGc;
-    //                    metrics.totalMinorGcTime += minorGcTime - metrics.totalMinorGcTime;
-    //                    metrics.totalMajorGc += majorGcCount - metrics.totalMajorGc;
-    //                    metrics.totalMajorGcTime += majorGcTime - metrics.totalMajorGcTime;
-    //                }
-    //            } catch (Exception ex) {
-    //                ex.printStackTrace();
-    //            }
-    //        }
-    //    }
 
     private static class MetricsTask {
         private final String edition;
@@ -239,18 +196,21 @@ class TestMetrics {
         private final String testName;
         private final Metrics metrics;
         private final long executionTime;
+        private final long startTime;
 
-        private MetricsTask(String edition, String testClassName, String testName, Metrics metrics, long executionTime) {
+        private MetricsTask(String edition, String testClassName, String testName, Metrics metrics, long executionTime,
+                            long startTime) {
             this.edition = edition;
             this.testClassName = testClassName;
             this.testName = testName;
             this.metrics = metrics;
             this.executionTime = executionTime;
+            this.startTime = startTime;
         }
     }
 
     private static class MetricsPersister extends Thread {
-        private final String SQL = "{ ? = call record_metrics(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) }";
+        private final String SQL = "{ ? = call record_metrics(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) }";
 
         private final BlockingQueue<MetricsTask> metricsQueue = new LinkedBlockingQueue<>();
         private Connection pgConn;
@@ -275,15 +235,17 @@ class TestMetrics {
                     statement.setString(2, metricsTask.edition);
                     statement.setString(3, metricsTask.testClassName);
                     statement.setString(4, metricsTask.testName);
-                    statement.setInt(5, metricsTask.metrics.getPeakAliveThreads());
-                    statement.setInt(6, getStartedThreads(metricsTask));
-                    statement.setLong(7, metricsTask.metrics.getTotalMinorGc());
-                    statement.setLong(8, metricsTask.metrics.getTotalMinorGcTime());
-                    statement.setLong(9, metricsTask.metrics.getTotalMajorGc());
-                    statement.setLong(10, metricsTask.metrics.getTotalMajorGcTime());
-                    statement.setLong(11, metricsTask.metrics.getPeakHeapUsage());
-                    statement.setLong(12, metricsTask.metrics.getPeakNonHeapUsage());
-                    statement.setLong(13, metricsTask.executionTime);
+                    statement.setDouble(5, metricsTask.metrics.getPeakLoad1());
+                    statement.setInt(6, metricsTask.metrics.getPeakAliveThreads());
+                    statement.setInt(7, getStartedThreads(metricsTask));
+                    statement.setLong(8, metricsTask.metrics.getTotalMinorGc());
+                    statement.setLong(9, metricsTask.metrics.getTotalMinorGcTime());
+                    statement.setLong(10, metricsTask.metrics.getTotalMajorGc());
+                    statement.setLong(11, metricsTask.metrics.getTotalMajorGcTime());
+                    statement.setLong(12, metricsTask.metrics.getPeakHeapUsage());
+                    statement.setLong(13, metricsTask.metrics.getPeakNonHeapUsage());
+                    statement.setLong(14, metricsTask.executionTime);
+                    statement.setLong(15, metricsTask.startTime);
 
                     try {
                         statement.execute();

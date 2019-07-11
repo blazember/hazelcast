@@ -28,16 +28,11 @@ import com.hazelcast.spi.DistributedObjectNamespace;
 import com.hazelcast.spi.EventFilter;
 import com.hazelcast.spi.EventPublishingService;
 import com.hazelcast.spi.EventRegistration;
-import com.hazelcast.spi.partition.FragmentedMigrationAwareService;
 import com.hazelcast.spi.LockInterceptorService;
 import com.hazelcast.spi.ManagedService;
 import com.hazelcast.spi.NodeEngine;
 import com.hazelcast.spi.NotifiableEventListener;
 import com.hazelcast.spi.ObjectNamespace;
-import com.hazelcast.spi.partition.PartitionAwareService;
-import com.hazelcast.spi.partition.PartitionMigrationEvent;
-import com.hazelcast.spi.partition.PartitionReplicationEvent;
-import com.hazelcast.spi.impl.operationservice.Operation;
 import com.hazelcast.spi.PostJoinAwareService;
 import com.hazelcast.spi.QuorumAwareService;
 import com.hazelcast.spi.RemoteService;
@@ -47,9 +42,15 @@ import com.hazelcast.spi.SplitBrainHandlerService;
 import com.hazelcast.spi.StatisticsAwareService;
 import com.hazelcast.spi.TransactionalService;
 import com.hazelcast.spi.impl.CountingMigrationAwareService;
+import com.hazelcast.spi.impl.operationservice.Operation;
+import com.hazelcast.spi.partition.FragmentedMigrationAwareService;
 import com.hazelcast.spi.partition.IPartitionLostEvent;
+import com.hazelcast.spi.partition.PartitionAwareService;
+import com.hazelcast.spi.partition.PartitionMigrationEvent;
+import com.hazelcast.spi.partition.PartitionReplicationEvent;
 import com.hazelcast.transaction.TransactionalObject;
 import com.hazelcast.transaction.impl.Transaction;
+import com.hazelcast.wan.WanPartitionBatch;
 import com.hazelcast.wan.WanReplicationEvent;
 
 import java.util.Collection;
@@ -175,6 +176,11 @@ public class MapService implements ManagedService, FragmentedMigrationAwareServi
     @Override
     public void onReplicationEvent(WanReplicationEvent replicationEvent) {
         replicationSupportingService.onReplicationEvent(replicationEvent);
+    }
+
+    @Override
+    public void onPartitionBatch(WanPartitionBatch partitionBatch) {
+        replicationSupportingService.onPartitionBatch(partitionBatch);
     }
 
     @Override

@@ -14,23 +14,16 @@
  * limitations under the License.
  */
 
-package com.hazelcast.spi;
+package com.hazelcast.wan;
 
-import com.hazelcast.wan.WanPartitionBatch;
-import com.hazelcast.wan.WanReplicationEvent;
+import com.hazelcast.nio.serialization.IdentifiedDataSerializable;
 
-/**
- * An interface that can be implemented by SPI services to give them the
- * ability to listen to WAN replication events.
- */
-public interface ReplicationSupportingService {
+import java.util.Collection;
 
-    /**
-     * Processes a WAN replication event
-     *
-     * @param replicationEvent the event
-     */
-    void onReplicationEvent(WanReplicationEvent replicationEvent);
+public interface WanPartitionBatch extends IdentifiedDataSerializable {
+    int getPartitionId();
 
-    void onPartitionBatch(WanPartitionBatch partitionBatch);
+    long getSequenceId();
+
+    Collection<WanReplicationEvent> getEvents();
 }

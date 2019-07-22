@@ -35,7 +35,9 @@ import com.hazelcast.partition.strategy.StringPartitioningStrategy;
 import com.hazelcast.replicatedmap.ReplicatedMap;
 import com.hazelcast.security.jsm.HazelcastRuntimePermission;
 import com.hazelcast.topic.ITopic;
+import com.hazelcast.util.Preconditions;
 
+import javax.annotation.Nonnull;
 import java.io.File;
 import java.net.URL;
 import java.util.Collection;
@@ -170,6 +172,8 @@ public class Config {
     private boolean liteMember;
 
     private CPSubsystemConfig cpSubsystemConfig = new CPSubsystemConfig();
+
+    private MetricsConfig metricsConfig = new MetricsConfig();
 
     public Config() {
     }
@@ -3050,6 +3054,24 @@ public class Config {
         return this;
     }
 
+    /**
+     * Returns the metrics collection config.
+     */
+    @Nonnull
+    public MetricsConfig getMetricsConfig() {
+        return metricsConfig;
+    }
+
+    /**
+     * Sets the metrics collection config.
+     */
+    @Nonnull
+    public Config setMetricsConfig(@Nonnull MetricsConfig metricsConfig) {
+        Preconditions.checkNotNull(metricsConfig, "metricsConfig");
+        this.metricsConfig = metricsConfig;
+        return this;
+    }
+
     @Override
     public String toString() {
         return "Config{"
@@ -3076,6 +3098,7 @@ public class Config {
                 + ", crdtReplicationConfig=" + crdtReplicationConfig
                 + ", advancedNetworkConfig=" + advancedNetworkConfig
                 + ", cpSubsystemConfig=" + cpSubsystemConfig
+                + ", metricsConfig=" + metricsConfig
                 + '}';
     }
 }

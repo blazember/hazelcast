@@ -137,7 +137,7 @@ public final class HazelcastInstanceFactory {
                 // 1. Try loading XML config if provided in system property with any extension
                 config = new XmlConfigBuilder(xmlConfigLocator).build();
 
-            } else if (yamlConfigLocator.locateFromSystemPropertyOrFailOnUnacceptedSuffix()) {
+            } else if (yamlConfigLocator.locateFromSystemProperty()) {
                 // 2. Try loading YAML config if provided in system property with .yaml or .yml extension
                 config = new YamlConfigBuilder(yamlConfigLocator).build();
 

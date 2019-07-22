@@ -90,4 +90,10 @@ public @interface Probe {
      * Measurement unit of a Probe. Not used on member, becomes a part of the key.
      */
     ProbeUnit unit() default COUNT;
+
+    /**
+     * Tags associated to the Probe.
+     * TODO examples
+     */
+    String tags() default "";
 }

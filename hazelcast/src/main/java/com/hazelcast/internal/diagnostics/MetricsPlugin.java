@@ -105,4 +105,27 @@ public class MetricsPlugin extends DiagnosticsPlugin {
             writer.writeSectionKeyValue(SECTION_NAME, timeMillis, name, "NA");
         }
     }
+
+    private static class SysOutRendererImpl implements ProbeRenderer {
+
+        @Override
+        public void renderLong(String name, long value) {
+            System.out.println("PROBE: " + name + "=" + value);
+        }
+
+        @Override
+        public void renderDouble(String name, double value) {
+            System.out.println("PROBE: " + name + "=" + value);
+        }
+
+        @Override
+        public void renderException(String name, Exception e) {
+            System.out.println("PROBE: " + name + "=" + e.getMessage());
+        }
+
+        @Override
+        public void renderNoValue(String name) {
+            System.out.println("PROBE: " + name + "=" + null);
+        }
+    }
 }

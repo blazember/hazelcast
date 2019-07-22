@@ -34,9 +34,9 @@ import static org.junit.Assert.assertEquals;
 
 @RunWith(HazelcastParallelClassRunner.class)
 @Category(QuickTest.class)
-public class MetricsPluginTest extends AbstractDiagnosticsPluginTest {
+public class NewMetricsPluginTest extends AbstractDiagnosticsPluginTest {
 
-    private MetricsPlugin plugin;
+    private NewMetricsPlugin plugin;
     private MetricsRegistry metricsRegistry;
 
     @Before
@@ -47,7 +47,7 @@ public class MetricsPluginTest extends AbstractDiagnosticsPluginTest {
         HazelcastInstance hz = createHazelcastInstance(config);
         NodeEngineImpl nodeEngineImpl = getNodeEngineImpl(hz);
         metricsRegistry = nodeEngineImpl.getMetricsRegistry();
-        plugin = new MetricsPlugin(nodeEngineImpl);
+        plugin = new NewMetricsPlugin(nodeEngineImpl);
         plugin.onStart();
     }
 
@@ -67,7 +67,6 @@ public class MetricsPluginTest extends AbstractDiagnosticsPluginTest {
         });
 
         plugin.run(logWriter);
-        sleepMillis(10_000);
         assertContains("broken=java.lang.RuntimeException:error");
     }
 

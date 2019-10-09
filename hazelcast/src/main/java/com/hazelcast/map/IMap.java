@@ -2619,6 +2619,9 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
     <R> R executeOnKey(@Nonnull K key,
                        @Nonnull EntryProcessor<K, V, R> entryProcessor);
 
+    <R> R executeOnKey(@Nonnull K key,
+                       @Nonnull String entryProcessor);
+
     /**
      * Applies the user defined {@link EntryProcessor} to the entries mapped by the collection of keys.
      * <p>
@@ -2879,6 +2882,8 @@ public interface IMap<K, V> extends ConcurrentMap<K, V>, BaseMap<K, V> {
      * @return results mapped by entry key
      */
     <R> Map<K, R> executeOnEntries(@Nonnull EntryProcessor<K, V, R> entryProcessor);
+
+    <R> Map<K, R> executeOnEntries(@Nonnull String entryProcessorScript);
 
     /**
      * Applies the user defined {@link EntryProcessor} to the entries in the map which satisfy provided predicate.

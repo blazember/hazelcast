@@ -140,7 +140,6 @@ import com.hazelcast.cp.internal.session.client.GenerateThreadIdMessageTask;
 import com.hazelcast.cp.internal.session.client.HeartbeatSessionMessageTask;
 import com.hazelcast.flakeidgen.impl.client.NewIdBatchMessageTask;
 import com.hazelcast.instance.impl.Node;
-import com.hazelcast.internal.nio.Connection;
 import com.hazelcast.internal.longregister.client.codec.LongRegisterAddAndGetCodec;
 import com.hazelcast.internal.longregister.client.codec.LongRegisterDecrementAndGetCodec;
 import com.hazelcast.internal.longregister.client.codec.LongRegisterGetAndAddCodec;
@@ -157,6 +156,7 @@ import com.hazelcast.internal.longregister.client.task.LongRegisterGetAndSetMess
 import com.hazelcast.internal.longregister.client.task.LongRegisterGetMessageTask;
 import com.hazelcast.internal.longregister.client.task.LongRegisterIncrementAndGetMessageTask;
 import com.hazelcast.internal.longregister.client.task.LongRegisterSetMessageTask;
+import com.hazelcast.internal.nio.Connection;
 import com.hazelcast.internal.util.collection.Int2ObjectHashMap;
 import com.hazelcast.spi.impl.NodeEngine;
 import com.hazelcast.spi.impl.NodeEngineImpl;
@@ -1049,6 +1049,13 @@ public class DefaultMessageTaskFactoryProvider implements MessageTaskFactoryProv
                 return new com.hazelcast.client.impl.protocol.task.executorservice.ExecutorServiceSubmitToAddressMessageTask(clientMessage, node, connection);
             }
         });
+        factories.put(com.hazelcast.client.impl.protocol.codec.ExecutorServiceSubmitScriptToPartitionCodec.REQUEST_MESSAGE_TYPE,
+                new MessageTaskFactory() {
+                    public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                        return new com.hazelcast.client.impl.protocol.task.executorservice.ExecutorServiceSubmitScriptToPartitionMessageTask(
+                                clientMessage, node, connection);
+                    }
+                });
 //endregion
 //region ----------  REGISTRATION FOR com.hazelcast.client.impl.protocol.task.durableexecutor
         factories.put(com.hazelcast.client.impl.protocol.codec.DurableExecutorSubmitToPartitionCodec.REQUEST_MESSAGE_TYPE, new MessageTaskFactory() {
@@ -1522,7 +1529,16 @@ public class DefaultMessageTaskFactoryProvider implements MessageTaskFactoryProv
                 return new MapPutTransientWithMaxIdleMessageTask(clientMessage, node, connection);
             }
         });
-//endregion
+        factories.put(com.hazelcast.client.impl.protocol.codec.MapExecuteScriptOnAllKeysCodec.REQUEST_MESSAGE_TYPE,
+                new MessageTaskFactory() {
+                    public MessageTask create(ClientMessage clientMessage, Connection connection) {
+                        return new com.hazelcast.client.impl.protocol.task.map.MapExecuteScriptOnAllKeysMessageTask(clientMessage,
+                                node,
+                                connection);
+                    }
+                });
+
+        //endregion
 //region ----------  REGISTRATION FOR com.hazelcast.client.impl.protocol.task
         factories.put(com.hazelcast.client.impl.protocol.codec.ClientAddPartitionLostListenerCodec.REQUEST_MESSAGE_TYPE, new MessageTaskFactory() {
             public MessageTask create(ClientMessage clientMessage, Connection connection) {

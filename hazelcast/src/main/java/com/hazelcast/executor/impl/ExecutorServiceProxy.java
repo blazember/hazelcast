@@ -16,6 +16,7 @@
 
 package com.hazelcast.executor.impl;
 
+import com.hazelcast.cluster.Address;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.cluster.MemberSelector;
 import com.hazelcast.core.ExecutionCallback;
@@ -30,7 +31,6 @@ import com.hazelcast.internal.util.Clock;
 import com.hazelcast.internal.util.FutureUtil.ExceptionHandler;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.monitor.LocalExecutorStats;
-import com.hazelcast.cluster.Address;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.PartitionAware;
 import com.hazelcast.spi.impl.AbstractDistributedObject;
@@ -42,6 +42,10 @@ import com.hazelcast.spi.impl.operationservice.OperationService;
 import com.hazelcast.spi.impl.operationservice.impl.InvocationFuture;
 import com.hazelcast.splitbrainprotection.SplitBrainProtectionException;
 
+import javax.script.Bindings;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -61,6 +65,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.logging.Level;
 
+import static com.hazelcast.internal.util.ExceptionUtil.rethrow;
 import static com.hazelcast.internal.util.ExceptionUtil.sneakyThrow;
 import static com.hazelcast.internal.util.FutureUtil.waitWithDeadline;
 import static com.hazelcast.internal.util.MapUtil.createHashMap;
@@ -171,6 +176,22 @@ public class ExecutorServiceProxy
         submit(callable);
     }
 
+    @Override
+    public void execute(String script) {
+        Runnable commandRunnable = () -> {
+            ScriptEngine scriptEngine = new ScriptEngineManager().getEngineByName("nashorn");
+            Bindings bindings = scriptEngine.createBindings();
+            bindings.put("instance", getNodeEngine().getHazelcastInstance());
+            try {
+                scriptEngine.eval(script);
+            } catch (ScriptException e) {
+                throw rethrow(e);
+            }
+        };
+        Callable<?> callable = createRunnableAdapter(commandRunnable);
+        submit(callable);
+    }
+
     private <T> RunnableAdapter<T> createRunnableAdapter(Runnable command) {
         checkNotNull(command, "Command can't be null");
 
@@ -180,6 +201,22 @@ public class ExecutorServiceProxy
     @Override
     public void executeOnKeyOwner(Runnable command, Object key) {
         Callable<?> callable = createRunnableAdapter(command);
+        submitToKeyOwner(callable, key);
+    }
+
+    @Override
+    public void executeOnKeyOwner(String command, Object key) {
+        Runnable commandRunnable = () -> {
+            ScriptEngine scriptEngine = new ScriptEngineManager().getEngineByName("nashorn");
+            Bindings bindings = scriptEngine.createBindings();
+            bindings.put("instance", getNodeEngine().getHazelcastInstance());
+            try {
+                scriptEngine.eval(command);
+            } catch (ScriptException e) {
+                throw rethrow(e);
+            }
+        };
+        Callable<?> callable = createRunnableAdapter(commandRunnable);
         submitToKeyOwner(callable, key);
     }
 
@@ -313,7 +350,7 @@ public class ExecutorServiceProxy
         boolean sync = checkSync();
         MemberCallableTaskOperation op = new MemberCallableTaskOperation(name, uuid, taskData);
         InternalCompletableFuture future = nodeEngine.getOperationService()
-                .invokeOnTarget(DistributedExecutorService.SERVICE_NAME, op, target);
+                                                     .invokeOnTarget(DistributedExecutorService.SERVICE_NAME, op, target);
         if (sync) {
             return completedSynchronously(future, nodeEngine.getSerializationService());
         }
@@ -376,7 +413,7 @@ public class ExecutorServiceProxy
         CallableTaskOperation op = new CallableTaskOperation(name, null, taskData);
         OperationService operationService = nodeEngine.getOperationService();
         operationService.createInvocationBuilder(DistributedExecutorService.SERVICE_NAME, op, partitionId)
-                .setExecutionCallback((ExecutionCallback) callback).invoke();
+                        .setExecutionCallback((ExecutionCallback) callback).invoke();
     }
 
     @Override

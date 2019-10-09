@@ -19,6 +19,7 @@ package com.hazelcast.client.impl.proxy;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.ExecutorServiceIsShutdownCodec;
 import com.hazelcast.client.impl.protocol.codec.ExecutorServiceShutdownCodec;
+import com.hazelcast.client.impl.protocol.codec.ExecutorServiceSubmitScriptToPartitionCodec;
 import com.hazelcast.client.impl.protocol.codec.ExecutorServiceSubmitToAddressCodec;
 import com.hazelcast.client.impl.protocol.codec.ExecutorServiceSubmitToPartitionCodec;
 import com.hazelcast.client.impl.spi.ClientContext;
@@ -26,6 +27,7 @@ import com.hazelcast.client.impl.spi.ClientPartitionService;
 import com.hazelcast.client.impl.spi.ClientProxy;
 import com.hazelcast.client.impl.spi.impl.ClientInvocation;
 import com.hazelcast.client.impl.spi.impl.ClientInvocationFuture;
+import com.hazelcast.cluster.Address;
 import com.hazelcast.cluster.Member;
 import com.hazelcast.cluster.MemberSelector;
 import com.hazelcast.core.ExecutionCallback;
@@ -37,7 +39,6 @@ import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.internal.util.Clock;
 import com.hazelcast.internal.util.UuidUtil;
 import com.hazelcast.monitor.LocalExecutorStats;
-import com.hazelcast.cluster.Address;
 import com.hazelcast.nio.serialization.Data;
 import com.hazelcast.partition.PartitionAware;
 import com.hazelcast.spi.impl.InternalCompletableFuture;
@@ -87,8 +88,18 @@ public class ClientExecutorServiceProxy extends ClientProxy implements IExecutor
     }
 
     @Override
+    public void execute(String script) {
+        submit(script);
+    }
+
+    @Override
     public void executeOnKeyOwner(Runnable command, Object key) {
         submitToKeyOwnerInternal(toData(command), key, null);
+    }
+
+    @Override
+    public void executeOnKeyOwner(String script, Object key) {
+        submitScriptToKeyOwnerInternal(script, key, null);
     }
 
     @Override
@@ -257,6 +268,16 @@ public class ClientExecutorServiceProxy extends ClientProxy implements IExecutor
         return submitToRandomInternal(taskData, null, false);
     }
 
+    //    @Override
+    public Future<?> submit(String script) {
+
+        final Object partitionKey = getTaskPartitionKey(script);
+        if (partitionKey != null) {
+            return submitScriptToKeyOwnerInternal(script, partitionKey, null);
+        }
+        return submitScriptToRandomInternal(script, null, false);
+    }
+
     @Override
     public <T> Future<T> submit(Runnable command, T result) {
         final Object partitionKey = getTaskPartitionKey(command);
@@ -418,12 +439,38 @@ public class ClientExecutorServiceProxy extends ClientProxy implements IExecutor
         return delegatingFuture;
     }
 
+    private <T> Future<T> submitScriptToKeyOwnerInternal(String script, Object key, ExecutionCallback<T> callback) {
+        checkNotNull(script, "script should not be null");
+        UUID uuid = getUUID();
+        int partitionId = getPartitionId(key);
+        ClientMessage request = ExecutorServiceSubmitScriptToPartitionCodec.encodeRequest(name, uuid, script);
+        ClientInvocationFuture f = invokeOnPartitionOwner(request, partitionId);
+
+        InternalCompletableFuture<T> delegatingFuture = (InternalCompletableFuture<T>) checkSync(f, uuid, partitionId, false,
+                (T) null);
+
+        if (callback != null) {
+            delegatingFuture.whenCompleteAsync(new ExecutionCallbackAdapter<>(callback));
+        }
+        return delegatingFuture;
+    }
+
     private <T> Future<T> submitToRandomInternal(Data task, T defaultValue, boolean preventSync) {
         checkNotNull(task, "task should not be null");
 
         UUID uuid = getUUID();
         int partitionId = randomPartitionId();
         ClientMessage request = ExecutorServiceSubmitToPartitionCodec.encodeRequest(name, uuid, task);
+        ClientInvocationFuture f = invokeOnPartitionOwner(request, partitionId);
+        return checkSync(f, uuid, partitionId, preventSync, defaultValue);
+    }
+
+    private <T> Future<T> submitScriptToRandomInternal(String script, T defaultValue, boolean preventSync) {
+        checkNotNull(script, "script should not be null");
+
+        UUID uuid = getUUID();
+        int partitionId = randomPartitionId();
+        ClientMessage request = ExecutorServiceSubmitScriptToPartitionCodec.encodeRequest(name, uuid, script);
         ClientInvocationFuture f = invokeOnPartitionOwner(request, partitionId);
         return checkSync(f, uuid, partitionId, preventSync, defaultValue);
     }

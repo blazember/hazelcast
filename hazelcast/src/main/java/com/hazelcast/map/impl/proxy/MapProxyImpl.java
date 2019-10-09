@@ -58,6 +58,10 @@ import com.hazelcast.spi.impl.operationservice.Operation;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import javax.script.Bindings;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -795,6 +799,23 @@ public class MapProxyImpl<K, V> extends MapProxySupport<K, V> implements EventJo
     }
 
     @Override
+    public <R> R executeOnKey(@Nonnull K key, @Nonnull String entryProcessorScript) {
+        EntryProcessor<K, V, R> entryProcessor = entry -> {
+            // TODO cache me
+            ScriptEngine scriptEngine = new ScriptEngineManager().getEngineByName("nashorn");
+            Bindings bindings = scriptEngine.createBindings();
+            bindings.put("entry", entry);
+            try {
+                return (R) scriptEngine.eval(entryProcessorScript, bindings);
+            } catch (ScriptException e) {
+                throw rethrow(e);
+            }
+        };
+        Data result = executeOnKeyInternal(key, entryProcessor);
+        return toObject(result);
+    }
+
+    @Override
     public <R> Map<K, R> executeOnKeys(@Nonnull Set<K> keys,
                                        @Nonnull EntryProcessor<K, V, R> entryProcessor) {
         try {
@@ -841,6 +862,22 @@ public class MapProxyImpl<K, V> extends MapProxySupport<K, V> implements EventJo
 
     @Override
     public <R> Map<K, R> executeOnEntries(@Nonnull EntryProcessor<K, V, R> entryProcessor) {
+        return executeOnEntries(entryProcessor, Predicates.alwaysTrue());
+    }
+
+    @Override
+    public <R> Map<K, R> executeOnEntries(@Nonnull String entryProcessorScript) {
+        EntryProcessor<K, V, R> entryProcessor = entry -> {
+            // TODO cache me
+            ScriptEngine scriptEngine = new ScriptEngineManager().getEngineByName("nashorn");
+            Bindings bindings = scriptEngine.createBindings();
+            bindings.put("entry", entry);
+            try {
+                return (R) scriptEngine.eval(entryProcessorScript, bindings);
+            } catch (ScriptException e) {
+                throw rethrow(e);
+            }
+        };
         return executeOnEntries(entryProcessor, Predicates.alwaysTrue());
     }
 

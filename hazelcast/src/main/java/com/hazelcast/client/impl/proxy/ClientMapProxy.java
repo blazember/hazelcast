@@ -44,6 +44,7 @@ import com.hazelcast.client.impl.protocol.codec.MapEvictCodec;
 import com.hazelcast.client.impl.protocol.codec.MapExecuteOnAllKeysCodec;
 import com.hazelcast.client.impl.protocol.codec.MapExecuteOnKeyCodec;
 import com.hazelcast.client.impl.protocol.codec.MapExecuteOnKeysCodec;
+import com.hazelcast.client.impl.protocol.codec.MapExecuteScriptOnAllKeysCodec;
 import com.hazelcast.client.impl.protocol.codec.MapExecuteWithPredicateCodec;
 import com.hazelcast.client.impl.protocol.codec.MapFlushCodec;
 import com.hazelcast.client.impl.protocol.codec.MapForceUnlockCodec;
@@ -1469,6 +1470,11 @@ public class ClientMapProxy<K, V> extends ClientProxy
         return executeOnKeyInternal(key, entryProcessor);
     }
 
+    @Override
+    public <R> R executeOnKey(@Nonnull K key, @Nonnull String entryProcessor) {
+        throw new UnsupportedOperationException("TODO implement me");
+    }
+
     public <R> R executeOnKeyInternal(Object key,
                                       EntryProcessor<K, V, R> entryProcessor) {
         validateEntryProcessorForSingleKeyProcessing(entryProcessor);
@@ -1534,6 +1540,15 @@ public class ClientMapProxy<K, V> extends ClientProxy
         ClientMessage request = MapExecuteOnAllKeysCodec.encodeRequest(name, toData(entryProcessor));
         ClientMessage response = invoke(request);
         MapExecuteOnAllKeysCodec.ResponseParameters resultParameters = MapExecuteOnAllKeysCodec.decodeResponse(response);
+        return prepareResult(resultParameters.response);
+    }
+
+    @Override
+    public <R> Map<K, R> executeOnEntries(@Nonnull String entryProcessorScript) {
+        ClientMessage request = MapExecuteScriptOnAllKeysCodec.encodeRequest(name, entryProcessorScript);
+        ClientMessage response = invoke(request);
+        MapExecuteScriptOnAllKeysCodec.ResponseParameters resultParameters = MapExecuteScriptOnAllKeysCodec
+                .decodeResponse(response);
         return prepareResult(resultParameters.response);
     }
 

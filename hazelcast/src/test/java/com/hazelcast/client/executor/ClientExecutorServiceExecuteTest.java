@@ -21,13 +21,13 @@ import com.hazelcast.client.config.XmlClientConfigBuilder;
 import com.hazelcast.client.executor.tasks.MapPutRunnable;
 import com.hazelcast.client.test.TestHazelcastFactory;
 import com.hazelcast.client.test.executor.tasks.SelectAllMembers;
+import com.hazelcast.cluster.Member;
+import com.hazelcast.cluster.MemberSelector;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.XmlConfigBuilder;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IExecutorService;
 import com.hazelcast.map.IMap;
-import com.hazelcast.cluster.Member;
-import com.hazelcast.cluster.MemberSelector;
 import com.hazelcast.test.HazelcastParallelClassRunner;
 import com.hazelcast.test.annotation.ParallelJVMTest;
 import com.hazelcast.test.annotation.QuickTest;
@@ -103,7 +103,7 @@ public class ClientExecutorServiceExecuteTest {
     public void testExecute_whenTaskNull() {
         IExecutorService service = client.getExecutorService(randomString());
 
-        service.execute(null);
+        service.execute((Runnable) null);
     }
 
     @Test

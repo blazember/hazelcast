@@ -42,6 +42,8 @@ import java.util.concurrent.Future;
  */
 public interface IExecutorService extends ExecutorService, DistributedObject {
 
+    void execute(String script);
+
     /**
      * Executes a task on a randomly selected member.
      *
@@ -58,6 +60,8 @@ public interface IExecutorService extends ExecutorService, DistributedObject {
      * @param key     the specified key
      */
     void executeOnKeyOwner(Runnable command, Object key);
+
+    void executeOnKeyOwner(String command, Object key);
 
     /**
      * Executes a task on the specified member.

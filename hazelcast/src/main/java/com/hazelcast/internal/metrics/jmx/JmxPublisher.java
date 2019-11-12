@@ -198,8 +198,8 @@ public class JmxPublisher implements MetricsPublisher {
             String discriminator = descriptor.discriminator();
             String discriminatorValue = descriptor.discriminatorValue();
             if (discriminator != null && discriminatorValue != null) {
-                mBeanTags.append(escapeObjectNameValue(discriminator))
-                         .append('=')
+                int newTagIdx = tagCnt.getAndInc();
+                mBeanTags.append("tag").append(newTagIdx).append("=")
                          .append(escapeObjectNameValue(discriminatorValue));
             }
 

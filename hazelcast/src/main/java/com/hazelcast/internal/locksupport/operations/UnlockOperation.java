@@ -18,16 +18,16 @@ package com.hazelcast.internal.locksupport.operations;
 
 import com.hazelcast.internal.locksupport.LockDataSerializerHook;
 import com.hazelcast.internal.locksupport.LockStoreImpl;
+import com.hazelcast.internal.serialization.Data;
+import com.hazelcast.internal.services.ObjectNamespace;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.spi.impl.operationservice.BackupAwareOperation;
+import com.hazelcast.spi.impl.operationservice.MutatingOperation;
 import com.hazelcast.spi.impl.operationservice.Notifier;
-import com.hazelcast.internal.services.ObjectNamespace;
 import com.hazelcast.spi.impl.operationservice.Operation;
 import com.hazelcast.spi.impl.operationservice.WaitNotifyKey;
-import com.hazelcast.spi.impl.operationservice.MutatingOperation;
 
 import java.io.IOException;
 
@@ -66,17 +66,20 @@ public class UnlockOperation extends AbstractLockOperation implements Notifier, 
 
     protected final void unlock() {
         LockStoreImpl lockStore = getLockStore();
+        ILogger logger = getLogger();
+        Object keyObj = getNodeEngine().getSerializationService().toObject(key);
+        logger.info("***** Releasing lock " + namespace.getObjectName() + " key: " + keyObj);
         boolean unlocked = lockStore.unlock(key, getCallerUuid(), threadId, getReferenceCallId());
         response = unlocked;
         if (!unlocked) {
             // we can not check for retry here, hence just throw the exception
             String ownerInfo = lockStore.getOwnerInfo(key);
+            logger.info(
+                    "***** Could not release lock " + namespace.getObjectName() + " key: " + keyObj + " owned by "
+                            + ownerInfo);
             throw new IllegalMonitorStateException("Current thread is not owner of the lock! -> " + ownerInfo);
         } else {
-            ILogger logger = getLogger();
-            if (logger.isFinestEnabled()) {
-                logger.finest("Released lock " + namespace.getObjectName());
-            }
+            logger.info("***** Released lock " + namespace.getObjectName() + " key: " + keyObj);
         }
     }
 

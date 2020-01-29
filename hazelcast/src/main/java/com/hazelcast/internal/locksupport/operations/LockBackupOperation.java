@@ -20,11 +20,12 @@ import com.hazelcast.client.impl.ClientEngine;
 import com.hazelcast.client.impl.ClientEngineImpl;
 import com.hazelcast.internal.locksupport.LockDataSerializerHook;
 import com.hazelcast.internal.locksupport.LockStoreImpl;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.internal.services.ObjectNamespace;
 import com.hazelcast.internal.util.UUIDSerializationUtil;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.spi.impl.operationservice.BackupOperation;
 
 import java.io.IOException;
@@ -53,7 +54,19 @@ public class LockBackupOperation extends AbstractLockOperation implements Backup
         }
         interceptLockOperation();
         LockStoreImpl lockStore = getLockStore();
-        response = lockStore.lock(key, originalCallerUuid, threadId, getReferenceCallId(), leaseTime);
+        ILogger logger = getLogger();
+        Object keyObj = getNodeEngine().getSerializationService().toObject(key);
+        logger.info("***** Acquiring lock on BACKUP " + namespace.getObjectName()
+                + " for " + getCallerAddress() + " - " + getCallerUuid() + ", thread ID: " + threadId + " key: " + keyObj);
+        boolean lockResult = lockStore.lock(key, originalCallerUuid, threadId, getReferenceCallId(), leaseTime);
+        response = lockResult;
+        if (lockResult) {
+            logger.info("***** Acquired lock on BACKUP " + namespace.getObjectName()
+                    + " for " + getCallerAddress() + " - " + getCallerUuid() + ", thread ID: " + threadId + " key: " + keyObj);
+        } else {
+            logger.info("***** Could not acquire lock on BACKUP" + namespace.getObjectName()
+                    + " as owned by " + " key: " + keyObj + getLockStore().getOwnerInfo(key));
+        }
     }
 
     @Override

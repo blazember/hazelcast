@@ -22,9 +22,9 @@ import com.hazelcast.core.OperationTimeoutException;
 import com.hazelcast.internal.locksupport.LockDataSerializerHook;
 import com.hazelcast.internal.locksupport.LockStoreImpl;
 import com.hazelcast.internal.locksupport.LockWaitNotifyKey;
+import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.internal.services.ObjectNamespace;
 import com.hazelcast.logging.ILogger;
-import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.spi.impl.operationservice.BackupAwareOperation;
 import com.hazelcast.spi.impl.operationservice.BlockingOperation;
 import com.hazelcast.spi.impl.operationservice.MutatingOperation;
@@ -49,6 +49,11 @@ public class LockOperation extends AbstractLockOperation implements BlockingOper
 
     @Override
     public void run() throws Exception {
+        ILogger logger = getLogger();
+        Object keyObj = getNodeEngine().getSerializationService().toObject(key);
+        logger.info("***** Acquiring lock " + namespace.getObjectName()
+                + " for " + getCallerAddress() + " - " + getCallerUuid() + ", thread ID: " + threadId + " key: " + keyObj);
+
         interceptLockOperation();
         if (isClient) {
             ClientEngine clientEngine = getNodeEngine().getService(ClientEngineImpl.SERVICE_NAME);
@@ -57,15 +62,12 @@ public class LockOperation extends AbstractLockOperation implements BlockingOper
         final boolean lockResult = getLockStore().lock(key, getCallerUuid(), threadId, getReferenceCallId(), leaseTime);
         response = lockResult;
 
-        ILogger logger = getLogger();
-        if (logger.isFinestEnabled()) {
-            if (lockResult) {
-                logger.finest("Acquired lock " + namespace.getObjectName()
-                        + " for " + getCallerAddress() + " - " + getCallerUuid() + ", thread ID: " + threadId);
-            } else {
-                logger.finest("Could not acquire lock " + namespace.getObjectName()
-                        + " as owned by " + getLockStore().getOwnerInfo(key));
-            }
+        if (lockResult) {
+            logger.info("***** Acquired lock " + namespace.getObjectName()
+                    + " for " + getCallerAddress() + " - " + getCallerUuid() + ", thread ID: " + threadId + " key: " + keyObj);
+        } else {
+            logger.info("***** Could not acquire lock " + namespace.getObjectName()
+                    + " as owned by " + getLockStore().getOwnerInfo(key) + " key: " + keyObj);
         }
     }
 

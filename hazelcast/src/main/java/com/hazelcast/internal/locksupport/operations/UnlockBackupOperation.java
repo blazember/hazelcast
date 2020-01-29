@@ -18,12 +18,13 @@ package com.hazelcast.internal.locksupport.operations;
 
 import com.hazelcast.internal.locksupport.LockDataSerializerHook;
 import com.hazelcast.internal.locksupport.LockStoreImpl;
+import com.hazelcast.internal.serialization.Data;
+import com.hazelcast.internal.services.ObjectNamespace;
 import com.hazelcast.internal.util.UUIDSerializationUtil;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
-import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.spi.impl.operationservice.BackupOperation;
-import com.hazelcast.internal.services.ObjectNamespace;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -46,11 +47,21 @@ public class UnlockBackupOperation extends AbstractLockOperation implements Back
     @Override
     public void run() throws Exception {
         LockStoreImpl lockStore = getLockStore();
+        ILogger logger = getLogger();
+        Object keyObj = getNodeEngine().getSerializationService().toObject(key);
+        logger.info("***** Releasing lock on BACKUP " + namespace.getObjectName() + " key: " + keyObj);
         boolean unlocked;
         if (force) {
             unlocked = lockStore.forceUnlock(key);
         } else {
             unlocked = lockStore.unlock(key, originalCallerUuid, threadId, getReferenceCallId());
+            String ownerInfo = lockStore.getOwnerInfo(key);
+            if (!unlocked) {
+                logger.info("***** Could not release lock " + namespace.getObjectName() + " key: " + keyObj
+                        + " owned by " + ownerInfo);
+            } else {
+                logger.info("***** Released lock " + namespace.getObjectName() + " key: " + keyObj);
+            }
         }
 
         response = unlocked;

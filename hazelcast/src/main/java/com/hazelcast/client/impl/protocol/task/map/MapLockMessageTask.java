@@ -19,14 +19,14 @@ package com.hazelcast.client.impl.protocol.task.map;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.MapLockCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractPartitionMessageTask;
+import com.hazelcast.instance.impl.Node;
 import com.hazelcast.internal.locksupport.LockSupportService;
 import com.hazelcast.internal.locksupport.operations.LockOperation;
-import com.hazelcast.instance.impl.Node;
-import com.hazelcast.map.impl.MapService;
 import com.hazelcast.internal.nio.Connection;
+import com.hazelcast.internal.services.ObjectNamespace;
+import com.hazelcast.map.impl.MapService;
 import com.hazelcast.security.permission.ActionConstants;
 import com.hazelcast.security.permission.MapPermission;
-import com.hazelcast.internal.services.ObjectNamespace;
 import com.hazelcast.spi.impl.operationservice.Operation;
 
 import java.security.Permission;
@@ -41,8 +41,12 @@ public class MapLockMessageTask
 
     @Override
     protected Operation prepareOperation() {
-        return new LockOperation(getNamespace(), parameters.key,
+        Object key = serializationService.toObject(parameters.key);
+        logger.info("***** Preparing lock operation for key " + key);
+        LockOperation lockOperation = new LockOperation(getNamespace(), parameters.key,
                 parameters.threadId, parameters.ttl, -1, parameters.referenceId, true);
+        logger.info("***** Prepared lock operation for key " + key);
+        return lockOperation;
     }
 
     @Override

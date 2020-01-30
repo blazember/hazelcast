@@ -19,14 +19,14 @@ package com.hazelcast.client.impl.protocol.task.map;
 import com.hazelcast.client.impl.protocol.ClientMessage;
 import com.hazelcast.client.impl.protocol.codec.MapUnlockCodec;
 import com.hazelcast.client.impl.protocol.task.AbstractPartitionMessageTask;
+import com.hazelcast.instance.impl.Node;
 import com.hazelcast.internal.locksupport.LockSupportService;
 import com.hazelcast.internal.locksupport.operations.UnlockOperation;
-import com.hazelcast.instance.impl.Node;
-import com.hazelcast.map.impl.MapService;
 import com.hazelcast.internal.nio.Connection;
+import com.hazelcast.internal.services.ObjectNamespace;
+import com.hazelcast.map.impl.MapService;
 import com.hazelcast.security.permission.ActionConstants;
 import com.hazelcast.security.permission.MapPermission;
-import com.hazelcast.internal.services.ObjectNamespace;
 import com.hazelcast.spi.impl.operationservice.Operation;
 
 import java.security.Permission;
@@ -40,7 +40,12 @@ public class MapUnlockMessageTask
 
     @Override
     protected Operation prepareOperation() {
-        return new UnlockOperation(getNamespace(), parameters.key, parameters.threadId, false, parameters.referenceId);
+        Object key = serializationService.toObject(parameters.key);
+        logger.info("***** Preparing unlock operation for key " + key);
+        UnlockOperation unlockOperation = new UnlockOperation(getNamespace(), parameters.key, parameters.threadId, false,
+                parameters.referenceId);
+        logger.info("***** Prepared unlock operation for key " + key);
+        return unlockOperation;
     }
 
     @Override

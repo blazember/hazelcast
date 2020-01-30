@@ -115,6 +115,7 @@ import com.hazelcast.internal.journal.EventJournalInitialSubscriberState;
 import com.hazelcast.internal.journal.EventJournalReader;
 import com.hazelcast.internal.serialization.InternalSerializationService;
 import com.hazelcast.internal.util.SimpleCompletedFuture;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.map.EntryBackupProcessor;
 import com.hazelcast.map.EntryProcessor;
 import com.hazelcast.map.MapInterceptor;
@@ -256,6 +257,8 @@ public class ClientMapProxy<K, V> extends ClientProxy
     private ClientLockReferenceIdGenerator lockReferenceIdGenerator;
     private ClientQueryCacheContext queryCacheContext;
 
+    private ILogger logger;
+
     public ClientMapProxy(String serviceName, String name, ClientContext context) {
         super(serviceName, name, context);
     }
@@ -266,6 +269,7 @@ public class ClientMapProxy<K, V> extends ClientProxy
 
         lockReferenceIdGenerator = getClient().getLockReferenceIdGenerator();
         queryCacheContext = getContext().getQueryCacheContext();
+        logger = getContext().getLoggingService().getLogger(ClientMapProxy.class);
         eventJournalReadResponseDecoder = new ClientMessageDecoder() {
             @Override
             public ReadResultSet<?> decodeClientMessage(ClientMessage message) {
@@ -729,7 +733,9 @@ public class ClientMapProxy<K, V> extends ClientProxy
 
     @Override
     public void lock(K key) {
+        logger.info("***** Locking key: " + key);
         lock(key, -1, MILLISECONDS);
+        logger.info("***** Locked key: " + key);
     }
 
     @Override
@@ -794,11 +800,13 @@ public class ClientMapProxy<K, V> extends ClientProxy
 
     @Override
     public void unlock(K key) {
+        logger.info("***** Unlocking key: " + key);
         checkNotNull(key, NULL_KEY_IS_NOT_ALLOWED);
         Data keyData = toData(key);
         ClientMessage request = MapUnlockCodec.encodeRequest(name, keyData, getThreadId(),
                 lockReferenceIdGenerator.getNextReferenceId());
         invoke(request, keyData);
+        logger.info("***** Unlocked key " + key);
     }
 
     @Override

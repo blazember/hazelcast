@@ -17,6 +17,7 @@
 package com.hazelcast.concurrent.lock.operations;
 
 import com.hazelcast.concurrent.lock.LockDataSerializerHook;
+import com.hazelcast.concurrent.lock.LockResource;
 import com.hazelcast.concurrent.lock.LockStoreImpl;
 import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
@@ -30,6 +31,7 @@ import com.hazelcast.spi.WaitNotifyKey;
 import com.hazelcast.spi.impl.MutatingOperation;
 
 import java.io.IOException;
+import java.util.Collection;
 
 import static java.lang.Boolean.TRUE;
 
@@ -67,16 +69,39 @@ public class UnlockOperation extends AbstractLockOperation implements Notifier, 
 
     protected final void unlock() {
         LockStoreImpl lockStore = getLockStore();
+        ILogger logger = getLogger();
+        Object keyObj = getNodeEngine().getSerializationService().toObject(key);
+        logger.info("***** Releasing lock " + namespace.getObjectName() + " key: " + keyObj);
         boolean unlocked = lockStore.unlock(key, getCallerUuid(), threadId, getReferenceCallId());
+        Collection<LockResource> remainingLocks = lockStore.getLocks();
         response = unlocked;
-        if (!unlocked) {
-            // we can not check for retry here, hence just throw the exception
-            String ownerInfo = lockStore.getOwnerInfo(key);
-            throw new IllegalMonitorStateException("Current thread is not owner of the lock! -> " + ownerInfo);
-        } else {
-            ILogger logger = getLogger();
-            if (logger.isFinestEnabled()) {
-                logger.finest("Released lock " + namespace.getObjectName());
+        try {
+            if (!unlocked) {
+                // we can not check for retry here, hence just throw the exception
+                String ownerInfo = lockStore.getOwnerInfo(key);
+                logger.info(
+                        "***** Could not release lock " + namespace.getObjectName() + " key: " + keyObj + " owned by "
+                                + ownerInfo);
+                throw new IllegalMonitorStateException("Current thread is not owner of the lock! -> " + ownerInfo);
+            } else {
+                logger.info("***** Released lock " + namespace.getObjectName() + " key: " + keyObj);
+            }
+        } finally {
+            int partitionId = getPartitionId();
+            if (remainingLocks.size() > 0) {
+                StringBuilder keysSb = new StringBuilder("[");
+                for (LockResource lock : remainingLocks) {
+                    if (keysSb.length() != 1) {
+                        keysSb.append(',');
+                    }
+                    Data key = lock.getKey();
+                    Object lockedKeyObj = getNodeEngine().getSerializationService().toObject(key);
+                    keysSb.append(lockedKeyObj);
+                }
+                keysSb.append("]");
+                logger.info("***** Remaining locks on partition " + partitionId + ": " + remainingLocks.size() + " - " + keysSb);
+            } else {
+                logger.info("***** No remaining locks on partition " + partitionId);
             }
         }
     }

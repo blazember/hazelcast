@@ -45,17 +45,21 @@ public class LockOperation extends AbstractLockOperation implements BlockingOper
 
     @Override
     public void run() throws Exception {
+        ILogger logger = getLogger();
+        Object keyObj = getNodeEngine().getSerializationService().toObject(key);
+        logger.info("***** Acquiring lock " + namespace.getObjectName()
+                + " for " + getCallerAddress() + " - " + getCallerUuid() + ", thread ID: " + threadId + " key: " + keyObj);
         final boolean lockResult = getLockStore().lock(key, getCallerUuid(), threadId, getReferenceCallId(), leaseTime);
         response = lockResult;
 
-        ILogger logger = getLogger();
         if (logger.isFinestEnabled()) {
             if (lockResult) {
-                logger.finest("Acquired lock " + namespace.getObjectName()
-                        + " for " + getCallerAddress() + " - " + getCallerUuid() + ", thread ID: " + threadId);
+                logger.info("Acquired lock " + namespace.getObjectName()
+                        + " for " + getCallerAddress() + " - " + getCallerUuid() + ", thread ID: " + threadId + " key: "
+                        + keyObj);
             } else {
                 logger.finest("Could not acquire lock " + namespace.getObjectName()
-                        + " as owned by " + getLockStore().getOwnerInfo(key));
+                        + " as owned by " + getLockStore().getOwnerInfo(key) + " key: " + keyObj);
             }
         }
     }

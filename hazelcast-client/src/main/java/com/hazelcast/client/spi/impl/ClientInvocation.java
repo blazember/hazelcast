@@ -248,13 +248,11 @@ public class ClientInvocation implements Runnable {
     }
 
     private void logException(Throwable exception) {
-        if (logger.isFinestEnabled()) {
-            logger.finest("Invocation got an exception " + this
-                    + ", invoke count : " + invokeCount
-                    + ", exception : " + exception.getClass()
-                    + ", message : " + exception.getMessage()
-                    + (exception.getCause() != null ? (", cause :" + exception.getCause()) : ""));
-        }
+        logger.info("Invocation got an exception " + this
+                + ", invoke count : " + invokeCount
+                + ", exception : " + exception.getClass()
+                + ", message : " + exception.getMessage()
+                + (exception.getCause() != null ? (", cause :" + exception.getCause()) : ""));
     }
 
     private void execute() {

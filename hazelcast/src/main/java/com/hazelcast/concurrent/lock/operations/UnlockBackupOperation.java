@@ -18,6 +18,7 @@ package com.hazelcast.concurrent.lock.operations;
 
 import com.hazelcast.concurrent.lock.LockDataSerializerHook;
 import com.hazelcast.concurrent.lock.LockStoreImpl;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
@@ -43,6 +44,9 @@ public class UnlockBackupOperation extends AbstractLockOperation implements Back
 
     @Override
     public void run() throws Exception {
+        ILogger logger = getLogger();
+        Object keyObj = getNodeEngine().getSerializationService().toObject(key);
+        logger.info("***** Releasing lock on BACKUP " + namespace.getObjectName() + " key: " + keyObj);
         LockStoreImpl lockStore = getLockStore();
         boolean unlocked;
         if (force) {
@@ -50,7 +54,13 @@ public class UnlockBackupOperation extends AbstractLockOperation implements Back
         } else {
             unlocked = lockStore.unlock(key, originalCallerUuid, threadId, getReferenceCallId());
         }
-
+        String ownerInfo = lockStore.getOwnerInfo(key);
+        if (!unlocked) {
+            logger.info("***** Could not release lock " + namespace.getObjectName() + " key: " + keyObj
+                    + " owned by " + ownerInfo);
+        } else {
+            logger.info("***** Released lock " + namespace.getObjectName() + " key: " + keyObj);
+        }
         response = unlocked;
         lockStore.pollExpiredAwaitOp(key);
     }

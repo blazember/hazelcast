@@ -41,8 +41,12 @@ public class MapLockMessageTask
 
     @Override
     protected Operation prepareOperation() {
-        return new LockOperation(getNamespace(), parameters.key,
+        Object key = serializationService.toObject(parameters.key);
+        logger.info("***** Preparing lock operation for key " + key);
+        LockOperation lockOperation = new LockOperation(getNamespace(), parameters.key,
                 parameters.threadId, parameters.ttl, -1, parameters.referenceId);
+        logger.info("***** Prepared lock operation for key " + key);
+        return lockOperation;
     }
 
     @Override

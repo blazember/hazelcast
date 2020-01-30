@@ -40,7 +40,12 @@ public class MapUnlockMessageTask
 
     @Override
     protected Operation prepareOperation() {
-        return new UnlockOperation(getNamespace(), parameters.key, parameters.threadId, false, parameters.referenceId);
+        Object key = serializationService.toObject(parameters.key);
+        logger.info("***** Preparing unlock operation for key " + key);
+        UnlockOperation unlockOperation = new UnlockOperation(getNamespace(), parameters.key, parameters.threadId, false,
+                parameters.referenceId);
+        logger.info("***** Prepared unlock operation for key " + key);
+        return unlockOperation;
     }
 
     @Override

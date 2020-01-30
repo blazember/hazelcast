@@ -18,6 +18,7 @@ package com.hazelcast.concurrent.lock.operations;
 
 import com.hazelcast.concurrent.lock.LockDataSerializerHook;
 import com.hazelcast.concurrent.lock.LockStoreImpl;
+import com.hazelcast.logging.ILogger;
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;
 import com.hazelcast.nio.serialization.Data;
@@ -42,7 +43,19 @@ public class LockBackupOperation extends AbstractLockOperation implements Backup
     @Override
     public void run() throws Exception {
         LockStoreImpl lockStore = getLockStore();
-        response = lockStore.lock(key, originalCallerUuid, threadId, getReferenceCallId(), leaseTime);
+        ILogger logger = getLogger();
+        Object keyObj = getNodeEngine().getSerializationService().toObject(key);
+        logger.info("***** Acquiring lock on BACKUP " + namespace.getObjectName()
+                + " for " + getCallerAddress() + " - " + getCallerUuid() + ", thread ID: " + threadId + " key: " + keyObj);
+        boolean lockResult = lockStore.lock(key, originalCallerUuid, threadId, getReferenceCallId(), leaseTime);
+        response = lockResult;
+        if (lockResult) {
+            logger.info("***** Acquired lock on BACKUP " + namespace.getObjectName()
+                    + " for " + getCallerAddress() + " - " + getCallerUuid() + ", thread ID: " + threadId + " key: " + keyObj);
+        } else {
+            logger.info("***** Could not acquire lock on BACKUP" + namespace.getObjectName()
+                    + " as owned by " + " key: " + keyObj + getLockStore().getOwnerInfo(key));
+        }
     }
 
     @Override

@@ -86,6 +86,7 @@ public class UnlockOperation extends AbstractLockOperation implements Notifier, 
                 logger.info("***** Released lock " + namespace.getObjectName() + " key: " + keyObj);
             }
         } finally {
+            int partitionId = getPartitionId();
             if (remainingLocks.size() > 0) {
                 StringBuilder keysSb = new StringBuilder("[");
                 remainingLocks.forEach(lock -> {
@@ -97,9 +98,9 @@ public class UnlockOperation extends AbstractLockOperation implements Notifier, 
                     keysSb.append(lockedKeyObj);
                 });
                 keysSb.append("]");
-                logger.info("***** Remaining locks: " + remainingLocks.size() + " - " + keysSb);
+                logger.info("***** Remaining locks on partition " + partitionId + ": " + remainingLocks.size() + " - " + keysSb);
             } else {
-                logger.info("***** No remaining locks");
+                logger.info("***** No remaining locks on partition " + partitionId);
             }
         }
     }

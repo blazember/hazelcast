@@ -19,6 +19,8 @@ package com.hazelcast.internal.metrics.jmx;
 import com.hazelcast.internal.metrics.jmx.MetricsMBean.Type;
 import com.hazelcast.internal.util.BiTuple;
 import com.hazelcast.internal.util.TriTuple;
+import com.hazelcast.logging.ILogger;
+import com.hazelcast.logging.Logger;
 
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanServer;
@@ -38,9 +40,12 @@ import static org.junit.Assert.assertTrue;
 public class JmxPublisherTestHelper {
     private static final String MODULE_NAME = "moduleA";
 
+    private static final ThreadLocal<String> jvmName = new ThreadLocal<>();
+
     private final MBeanServer platformMBeanServer;
     private final ObjectName objectNameNoModule;
     private final ObjectName objectNameWithModule;
+    private final ILogger logger = Logger.getLogger(JmxPublisherTestHelper.class);
 
     public JmxPublisherTestHelper(String domainPrefix) throws Exception {
         objectNameNoModule = new ObjectName(domainPrefix + ":*");
@@ -50,6 +55,13 @@ public class JmxPublisherTestHelper {
 
     public void assertNoMBeans() {
         Set<ObjectInstance> instances = queryOurInstances();
+        if (instances.size() > 0) {
+            if (jvmName.get() == null) {
+                jvmName.set(ManagementFactory.getRuntimeMXBean().getName());
+            }
+            logger.info("Dangling metrics MBeans created by " + jvmName.get() + ": " + instances);
+            //            System.out.println("Dangling metrics MBeans created by " + jvmName.get() + ": " + instances);
+        }
         assertEquals(0, instances.size());
     }
 

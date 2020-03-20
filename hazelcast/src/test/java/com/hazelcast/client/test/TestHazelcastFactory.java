@@ -31,14 +31,10 @@ import com.hazelcast.config.DiscoveryStrategyConfig;
 import com.hazelcast.config.InvalidConfigurationException;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.instance.impl.OutOfMemoryErrorDispatcher;
-import com.hazelcast.logging.ILogger;
-import com.hazelcast.logging.Logger;
 import com.hazelcast.spi.properties.HazelcastProperties;
 import com.hazelcast.test.TestEnvironment;
 import com.hazelcast.test.TestHazelcastInstanceFactory;
 
-import java.lang.management.ManagementFactory;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -46,13 +42,13 @@ import java.util.concurrent.ConcurrentMap;
 import static com.hazelcast.client.HazelcastClientUtil.getInstanceName;
 
 public class TestHazelcastFactory extends TestHazelcastInstanceFactory {
-    private static final ThreadLocal<String> jvmName = new ThreadLocal<>();
-    private static final ThreadLocal<StringBuilder> msgBuilder = new ThreadLocal<>();
+    //    private static final ThreadLocal<String> jvmName = new ThreadLocal<>();
+    //    private static final ThreadLocal<StringBuilder> msgBuilder = new ThreadLocal<>();
 
     private final boolean mockNetwork = TestEnvironment.isMockNetwork();
     private final ConcurrentMap<String, HazelcastClientInstanceImpl> clients = new ConcurrentHashMap<>(10);
     private final TestClientRegistry clientRegistry = new TestClientRegistry(getRegistry());
-    private final ILogger logger = Logger.getLogger(TestHazelcastFactory.class);
+//    private final ILogger logger = Logger.getLogger(TestHazelcastFactory.class);
 
     public TestHazelcastFactory(int initialPort, String... addresses) {
         super(initialPort, addresses);
@@ -145,43 +141,43 @@ public class TestHazelcastFactory extends TestHazelcastInstanceFactory {
         super.shutdownAll();
     }
 
-    public void logInstanceNames(Collection<? extends HazelcastInstance> clients) {
-        if (jvmName.get() == null) {
-            jvmName.set(ManagementFactory.getRuntimeMXBean().getName());
-        }
-        if (msgBuilder.get() == null) {
-            msgBuilder.set(new StringBuilder());
-        }
-
-        StringBuilder sb = msgBuilder.get();
-        sb.setLength(0);
-        sb.append("Client instances created by ")
-          .append(jvmName.get())
-          .append(": ");
-        boolean clientAdded = false;
-        for (HazelcastInstance client : clients) {
-            if (clientAdded) {
-                sb.append(", ");
-            } else {
-                clientAdded = true;
-            }
-            sb.append(client.getName());
-        }
-        String msg = sb.toString();
-        //        System.out.println(msg);
-        logger.info(msg);
-    }
+    //    public void logInstanceNames(Collection<? extends HazelcastInstance> clients) {
+    //        if (jvmName.get() == null) {
+    //            jvmName.set(ManagementFactory.getRuntimeMXBean().getName());
+    //        }
+    //        if (msgBuilder.get() == null) {
+    //            msgBuilder.set(new StringBuilder());
+    //        }
+    //
+    //        StringBuilder sb = msgBuilder.get();
+    //        sb.setLength(0);
+    //        sb.append("Client instances created by ")
+    //          .append(jvmName.get())
+    //          .append(": ");
+    //        boolean clientAdded = false;
+    //        for (HazelcastInstance client : clients) {
+    //            if (clientAdded) {
+    //                sb.append(", ");
+    //            } else {
+    //                clientAdded = true;
+    //            }
+    //            sb.append(client.getName());
+    //        }
+    //        String msg = sb.toString();
+    //        //        System.out.println(msg);
+    //        logger.info(msg);
+    //    }
 
     @Override
     public void shutdownAll() {
         if (mockNetwork) {
-            logInstanceNames(clients.values());
+            //            logInstanceNames(clients.values());
             for (HazelcastClientInstanceImpl client : clients.values()) {
                 client.shutdown();
             }
         } else {
             // for client terminateAll() and shutdownAll() is the same
-            logInstanceNames(HazelcastClient.getAllHazelcastClients());
+            //            logInstanceNames(HazelcastClient.getAllHazelcastClients());
             HazelcastClient.shutdownAll();
         }
         super.shutdownAll();
@@ -190,13 +186,13 @@ public class TestHazelcastFactory extends TestHazelcastInstanceFactory {
     @Override
     public void terminateAll() {
         if (mockNetwork) {
-            logInstanceNames(clients.values());
+            //            logInstanceNames(clients.values());
             for (HazelcastClientInstanceImpl client : clients.values()) {
                 client.getLifecycleService().terminate();
             }
         } else {
             // for client terminateAll() and shutdownAll() is the same
-            logInstanceNames(HazelcastClient.getAllHazelcastClients());
+            //            logInstanceNames(HazelcastClient.getAllHazelcastClients());
             HazelcastClient.shutdownAll();
         }
         super.terminateAll();

@@ -257,6 +257,7 @@ public class QueueStoreConfig implements IdentifiedDataSerializable {
         return this;
     }
 
+    @Override
     public String toString() {
         return "QueueStoreConfig{"
                 + "enabled=" + enabled

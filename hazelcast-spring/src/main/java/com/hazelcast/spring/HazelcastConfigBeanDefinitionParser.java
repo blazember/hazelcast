@@ -186,6 +186,7 @@ import org.w3c.dom.Node;
         "WeakerAccess"})
 public class HazelcastConfigBeanDefinitionParser extends AbstractHazelcastBeanDefinitionParser {
 
+    @Override
     public AbstractBeanDefinition parseInternal(Element element, ParserContext parserContext) {
         SpringXmlConfigBuilder springXmlConfigBuilder = new SpringXmlConfigBuilder(parserContext);
         springXmlConfigBuilder.handleConfig(element);

@@ -16,18 +16,20 @@
 
 package com.hazelcast.config.security;
 
+import com.hazelcast.config.CredentialsFactoryConfig;
+import com.hazelcast.internal.JavaDocDefine;
+import com.hazelcast.security.ICredentialsFactory;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import java.util.Objects;
 import java.util.Properties;
 
-import com.hazelcast.config.CredentialsFactoryConfig;
-import com.hazelcast.security.ICredentialsFactory;
-
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
-public class KerberosIdentityConfig implements IdentityConfig {
+@JavaDocDefine
+public class KerberosIdentityConfig
+    implements IdentityConfig {
 
     private final CredentialsFactoryConfig factoryConfig = new CredentialsFactoryConfig(
-            "com.hazelcast.security.impl.KerberosCredentialsFactory");
+        "com.hazelcast.security.impl.KerberosCredentialsFactory");
 
     public String getSpn() {
         return factoryConfig.getProperties().getProperty("spn");
@@ -107,7 +109,7 @@ public class KerberosIdentityConfig implements IdentityConfig {
     @Override
     public IdentityConfig copy() {
         return new KerberosIdentityConfig().setRealm(getRealm()).setSecurityRealm(getSecurityRealm())
-                .setServiceNamePrefix(getServiceNamePrefix()).setSpn(getSpn());
+                                           .setServiceNamePrefix(getServiceNamePrefix()).setSpn(getSpn());
     }
 
     @Override
@@ -133,12 +135,12 @@ public class KerberosIdentityConfig implements IdentityConfig {
     @Override
     public String toString() {
         return "KerberosIdentityConfig [spn=" + getSpn() + ", serviceNamePrefix=" + getServiceNamePrefix()
-                + ", realm=" + getRealm()
-                + ", securityRealm=" + getSecurityRealm()
-                + ", principal=" + getPrincipal()
-                + ", keytabFile=" + getKeytabFile()
-                + ", useCanonicalHostname=" + getUseCanonicalHostname()
-                + "]";
+            + ", realm=" + getRealm()
+            + ", securityRealm=" + getSecurityRealm()
+            + ", principal=" + getPrincipal()
+            + ", keytabFile=" + getKeytabFile()
+            + ", useCanonicalHostname=" + getUseCanonicalHostname()
+            + "]";
     }
 
 }

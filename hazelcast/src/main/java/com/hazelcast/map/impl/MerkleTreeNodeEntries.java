@@ -60,6 +60,10 @@ public class MerkleTreeNodeEntries implements IdentifiedDataSerializable {
         return MapDataSerializerHook.MERKLE_TREE_NODE_ENTRIES;
     }
 
+    public int getNodeOrder() {
+        return nodeOrder;
+    }
+
     @Override
     public void writeData(ObjectDataOutput out) throws IOException {
         out.writeInt(nodeOrder);

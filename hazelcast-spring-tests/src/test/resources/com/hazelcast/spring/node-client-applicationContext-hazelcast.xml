@@ -442,6 +442,20 @@
         </hz:native-memory>
     </hz:client>
 
+    <hz:client id="client21-persistent-memory-system-memory">
+        <hz:cluster-name>${cluster.name}</hz:cluster-name>
+        <hz:network>
+            <hz:member>127.0.0.1:5700</hz:member>
+            <hz:member>127.0.0.1:5701</hz:member>
+        </hz:network>
+        <hz:native-memory enabled="false" allocator-type="STANDARD" metadata-space-percentage="10.2"
+                          min-block-size="10"
+                          page-size="20">
+            <hz:size unit="GIGABYTES" value="256"/>
+            <hz:persistent-memory mode="SYSTEM_MEMORY"/>
+        </hz:native-memory>
+    </hz:client>
+
     <bean id="credentials" class="com.hazelcast.security.UsernamePasswordCredentials">
         <property name="name" value="spring-cluster"/>
         <property name="password" value="spring-cluster-pass"/>

@@ -33,6 +33,11 @@ public class PersistentMemoryConfig {
      */
     private List<PersistentMemoryDirectoryConfig> directoryConfigs = new LinkedList<>();
 
+    /**
+     * The operational mode of the persistent memory configured on the machine.
+     */
+    private PersistentMemoryMode mode = PersistentMemoryMode.MOUNTED;
+
     public PersistentMemoryConfig() {
     }
 
@@ -147,6 +152,25 @@ public class PersistentMemoryConfig {
         this.directoryConfigs.add(directoryConfig);
     }
 
+    /**
+     * Returns the mode in which the persistent memory should be used.
+     * @return the mode
+     */
+    @Nonnull
+    public PersistentMemoryMode getMode() {
+        return mode;
+    }
+
+    /**
+     * Sets the mode in which the persistent memory should be used.
+     *
+     * @param mode The mode of the persistent memory
+     * @throws NullPointerException if {@code mode} is {@code null}
+     */
+    public void setMode(@Nonnull PersistentMemoryMode mode) {
+        this.mode = requireNonNull(mode);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -158,18 +182,25 @@ public class PersistentMemoryConfig {
 
         PersistentMemoryConfig that = (PersistentMemoryConfig) o;
 
+        if (mode != that.mode) {
+            return false;
+        }
+
         return Objects.equals(directoryConfigs, that.directoryConfigs);
     }
 
     @Override
     public int hashCode() {
-        return directoryConfigs.hashCode();
+        int result = directoryConfigs != null ? directoryConfigs.hashCode() : 0;
+        result = 31 * result + (mode != null ? mode.hashCode() : 0);
+        return result;
     }
 
     @Override
     public String toString() {
         return "PersistentMemoryConfig{"
-                + "directoryConfigs=" + directoryConfigs
+                + "mode=" + mode
+                + ", directoryConfigs=" + directoryConfigs
                 + '}';
     }
 }

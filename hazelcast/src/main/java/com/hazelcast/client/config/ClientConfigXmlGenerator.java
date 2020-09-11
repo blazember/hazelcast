@@ -34,6 +34,7 @@ import com.hazelcast.config.LoginModuleConfig;
 import com.hazelcast.config.NativeMemoryConfig;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.config.NearCachePreloaderConfig;
+import com.hazelcast.config.PersistentMemoryConfig;
 import com.hazelcast.config.PersistentMemoryDirectoryConfig;
 import com.hazelcast.config.PredicateConfig;
 import com.hazelcast.config.QueryCacheConfig;
@@ -68,6 +69,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.hazelcast.client.config.impl.ClientAliasedDiscoveryConfigUtils.aliasedDiscoveryConfigsFrom;
+import static com.hazelcast.config.PersistentMemoryMode.MOUNTED;
 import static com.hazelcast.internal.nio.IOUtil.closeResource;
 import static com.hazelcast.internal.util.StringUtil.isNullOrEmpty;
 
@@ -380,27 +382,31 @@ public final class ClientConfigXmlGenerator {
     private static void nativeMemory(XmlGenerator gen, NativeMemoryConfig nativeMemory) {
         gen.open("native-memory", "enabled", nativeMemory.isEnabled(),
                 "allocator-type", nativeMemory.getAllocatorType())
-           .node("size", null, "value", nativeMemory.getSize().getValue(),
-                   "unit", nativeMemory.getSize().getUnit())
-           .node("min-block-size", nativeMemory.getMinBlockSize())
-           .node("page-size", nativeMemory.getPageSize())
-           .node("metadata-space-percentage", nativeMemory.getMetadataSpacePercentage());
+                .node("size", null, "value", nativeMemory.getSize().getValue(),
+                        "unit", nativeMemory.getSize().getUnit())
+                .node("min-block-size", nativeMemory.getMinBlockSize())
+                .node("page-size", nativeMemory.getPageSize())
+                .node("metadata-space-percentage", nativeMemory.getMetadataSpacePercentage());
 
-        List<PersistentMemoryDirectoryConfig> directoryConfigs = nativeMemory.getPersistentMemoryConfig()
-                                                                             .getDirectoryConfigs();
-        if (!directoryConfigs.isEmpty()) {
-            gen.open("persistent-memory")
-               .open("directories");
-            for (PersistentMemoryDirectoryConfig dirConfig : directoryConfigs) {
-                if (dirConfig.isNumaNodeSet()) {
-                    gen.node("directory", dirConfig.getDirectory(),
-                            "numa-node", dirConfig.getNumaNode());
-                } else {
-                    gen.node("directory", dirConfig.getDirectory());
+        PersistentMemoryConfig pmemConfig = nativeMemory.getPersistentMemoryConfig();
+        List<PersistentMemoryDirectoryConfig> directoryConfigs = pmemConfig
+                .getDirectoryConfigs();
+        if (!directoryConfigs.isEmpty() || pmemConfig.getMode() != MOUNTED) {
+            gen.open("persistent-memory",
+                    "mode", pmemConfig.getMode().name());
+            if (!directoryConfigs.isEmpty()) {
+                gen.open("directories");
+                for (PersistentMemoryDirectoryConfig dirConfig : directoryConfigs) {
+                    if (dirConfig.isNumaNodeSet()) {
+                        gen.node("directory", dirConfig.getDirectory(),
+                                "numa-node", dirConfig.getNumaNode());
+                    } else {
+                        gen.node("directory", dirConfig.getDirectory());
+                    }
                 }
+                gen.close();
             }
-            gen.close()
-               .close();
+            gen.close();
         }
 
         gen.close();

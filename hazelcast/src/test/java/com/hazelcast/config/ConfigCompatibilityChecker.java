@@ -803,8 +803,9 @@ public class ConfigCompatibilityChecker {
                     && c1.getMetadataSpacePercentage() == c2.getMetadataSpacePercentage()
                     && c1.getMinBlockSize() == c2.getMinBlockSize()
                     && c1.getPageSize() == c2.getPageSize()
+                    && c1.getPersistentMemoryConfig().getMode() == c2.getPersistentMemoryConfig().getMode()
                     && c1.getPersistentMemoryConfig().getDirectoryConfigs()
-                         .equals(c2.getPersistentMemoryConfig().getDirectoryConfigs());
+                    .equals(c2.getPersistentMemoryConfig().getDirectoryConfigs());
         }
 
         @Override

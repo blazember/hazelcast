@@ -47,7 +47,9 @@ import com.hazelcast.config.MaxSizePolicy;
 import com.hazelcast.config.NativeMemoryConfig;
 import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.config.NearCachePreloaderConfig;
+import com.hazelcast.config.PersistentMemoryConfig;
 import com.hazelcast.config.PersistentMemoryDirectoryConfig;
+import com.hazelcast.config.PersistentMemoryMode;
 import com.hazelcast.config.QueryCacheConfig;
 import com.hazelcast.config.SerializationConfig;
 import com.hazelcast.config.SerializerConfig;
@@ -151,6 +153,9 @@ public class TestClientApplicationContext {
 
     @Resource(name = "client20-native-memory")
     private HazelcastClientProxy nativeMemoryClient;
+
+    @Resource(name = "client21-persistent-memory-system-memory")
+    private HazelcastClientProxy pmemSystemMemoryClient;
 
     @Resource(name = "instance")
     private HazelcastInstance instance;
@@ -553,12 +558,27 @@ public class TestClientApplicationContext {
         assertEquals(10.2, nativeMemoryConfig.getMetadataSpacePercentage(), 0.1);
         assertEquals(10, nativeMemoryConfig.getMinBlockSize());
         List<PersistentMemoryDirectoryConfig> directoryConfigs = nativeMemoryConfig.getPersistentMemoryConfig()
-                                                                                   .getDirectoryConfigs();
+                .getDirectoryConfigs();
 
         assertEquals(2, directoryConfigs.size());
         assertEquals("/mnt/pmem0", directoryConfigs.get(0).getDirectory());
         assertEquals(0, directoryConfigs.get(0).getNumaNode());
         assertEquals("/mnt/pmem1", directoryConfigs.get(1).getDirectory());
         assertEquals(1, directoryConfigs.get(1).getNumaNode());
+    }
+
+    @Test
+    public void testNativeMemorySystemMemory() {
+        NativeMemoryConfig nativeMemoryConfig = pmemSystemMemoryClient.getClientConfig().getNativeMemoryConfig();
+
+        assertFalse(nativeMemoryConfig.isEnabled());
+        assertEquals(MemoryUnit.GIGABYTES, nativeMemoryConfig.getSize().getUnit());
+        assertEquals(256, nativeMemoryConfig.getSize().getValue());
+        assertEquals(20, nativeMemoryConfig.getPageSize());
+        assertEquals(NativeMemoryConfig.MemoryAllocatorType.STANDARD, nativeMemoryConfig.getAllocatorType());
+        assertEquals(10.2, nativeMemoryConfig.getMetadataSpacePercentage(), 0.1);
+        assertEquals(10, nativeMemoryConfig.getMinBlockSize());
+        PersistentMemoryConfig pmemConfig = nativeMemoryConfig.getPersistentMemoryConfig();
+        assertEquals(PersistentMemoryMode.SYSTEM_MEMORY, pmemConfig.getMode());
     }
 }

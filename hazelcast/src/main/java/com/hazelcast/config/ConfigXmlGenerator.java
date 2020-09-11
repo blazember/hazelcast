@@ -63,6 +63,7 @@ import static com.hazelcast.config.PermissionConfig.PermissionType.ALL;
 import static com.hazelcast.config.PermissionConfig.PermissionType.CONFIG;
 import static com.hazelcast.config.PermissionConfig.PermissionType.SQL;
 import static com.hazelcast.config.PermissionConfig.PermissionType.TRANSACTION;
+import static com.hazelcast.config.PersistentMemoryMode.MOUNTED;
 import static com.hazelcast.internal.config.AliasedDiscoveryConfigUtils.aliasedDiscoveryConfigsFrom;
 import static com.hazelcast.internal.nio.IOUtil.closeResource;
 import static com.hazelcast.internal.util.Preconditions.isNotNull;
@@ -1685,21 +1686,25 @@ public class ConfigXmlGenerator {
                 .node("page-size", nativeMemoryConfig.getPageSize())
                 .node("metadata-space-percentage", nativeMemoryConfig.getMetadataSpacePercentage());
 
-        List<PersistentMemoryDirectoryConfig> directoryConfigs = nativeMemoryConfig.getPersistentMemoryConfig()
+        PersistentMemoryConfig pmemConfig = nativeMemoryConfig.getPersistentMemoryConfig();
+        List<PersistentMemoryDirectoryConfig> directoryConfigs = pmemConfig
                 .getDirectoryConfigs();
-        if (!directoryConfigs.isEmpty()) {
-            gen.open("persistent-memory")
-                    .open("directories");
-            for (PersistentMemoryDirectoryConfig dirConfig : directoryConfigs) {
-                if (dirConfig.isNumaNodeSet()) {
-                    gen.node("directory", dirConfig.getDirectory(),
-                            "numa-node", dirConfig.getNumaNode());
-                } else {
-                    gen.node("directory", dirConfig.getDirectory());
+        if (!directoryConfigs.isEmpty() || pmemConfig.getMode() != MOUNTED) {
+            gen.open("persistent-memory",
+                    "mode", pmemConfig.getMode().name());
+            if (!directoryConfigs.isEmpty()) {
+                gen.open("directories");
+                for (PersistentMemoryDirectoryConfig dirConfig : directoryConfigs) {
+                    if (dirConfig.isNumaNodeSet()) {
+                        gen.node("directory", dirConfig.getDirectory(),
+                                "numa-node", dirConfig.getNumaNode());
+                    } else {
+                        gen.node("directory", dirConfig.getDirectory());
+                    }
                 }
+                gen.close();
             }
-            gen.close()
-                    .close();
+            gen.close();
         }
 
         gen.close();

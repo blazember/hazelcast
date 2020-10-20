@@ -1586,7 +1586,7 @@ public final class ClusterProperty {
             = new HazelcastProperty("hazelcast.member.naming.moby.enabled", true);
 
     public static final HazelcastProperty PMEM_BASE_DIR
-            = new HazelcastProperty("hazelcast.pmem.base.dir", "/tmp/");
+            = new HazelcastProperty("hazelcast.pmem.base.dir", "/mnt/pmem0/");
 
     private ClusterProperty() {
     }

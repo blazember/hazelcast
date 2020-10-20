@@ -32,7 +32,12 @@ public enum InMemoryFormat {
     /**
      * As native storage
      */
-    NATIVE(2);
+    NATIVE(2),
+
+    /**
+     * Pmem storage
+     */
+    PMEM(3);
 
     private final byte id;
 

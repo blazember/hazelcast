@@ -787,7 +787,8 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
         long now = getNow();
         markRecordStoreExpirable(ttl, maxIdle);
 
-        Record record = getRecordOrNull(key, now, false);
+        //Record record = getRecordOrNull(key, now, false);
+        Record record = null;
         Object oldValue = record == null
                 ? (loadFromStore ? loadValueOf(key) : null) : record.getValue();
         newValue = mapServiceContext.interceptPut(interceptorRegistry, oldValue, newValue);

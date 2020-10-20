@@ -25,6 +25,7 @@ import com.hazelcast.internal.locksupport.LockSupportService;
 import com.hazelcast.internal.partition.IPartition;
 import com.hazelcast.internal.partition.IPartitionService;
 import com.hazelcast.internal.serialization.Data;
+import com.hazelcast.internal.serialization.impl.HeapData;
 import com.hazelcast.internal.services.ObjectNamespace;
 import com.hazelcast.internal.util.Clock;
 import com.hazelcast.internal.util.ExceptionUtil;
@@ -1083,6 +1084,8 @@ public class DefaultRecordStore extends AbstractEvictableRecordStore {
     }
 
     protected Record getRecordOrNull(Data key, long now, boolean backup) {
+        assert key instanceof HeapData;
+
         Record record = storage.get(key);
         if (record == null) {
             return null;

@@ -18,6 +18,7 @@ package com.hazelcast.internal.dynamicconfig;
 
 import com.hazelcast.config.CacheSimpleConfig;
 import com.hazelcast.config.CardinalityEstimatorConfig;
+import com.hazelcast.config.Config;
 import com.hazelcast.config.ConfigPatternMatcher;
 import com.hazelcast.config.DurableExecutorConfig;
 import com.hazelcast.config.EventJournalConfig;
@@ -39,6 +40,7 @@ import com.hazelcast.config.TopicConfig;
 import com.hazelcast.core.HazelcastException;
 import com.hazelcast.internal.cluster.ClusterService;
 import com.hazelcast.internal.cluster.ClusterVersionListener;
+import com.hazelcast.internal.config.ReloadableConfig;
 import com.hazelcast.internal.serialization.Data;
 import com.hazelcast.internal.serialization.SerializationService;
 import com.hazelcast.internal.services.CoreService;
@@ -54,6 +56,8 @@ import com.hazelcast.spi.impl.operationservice.Operation;
 import com.hazelcast.version.Version;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -61,6 +65,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Future;
@@ -76,7 +81,6 @@ import static java.util.Collections.singleton;
 @SuppressWarnings({"checkstyle:cyclomaticcomplexity", "checkstyle:methodcount", "checkstyle:classfanoutcomplexity"})
 public class ClusterWideConfigurationService implements PreJoinAwareService,
         CoreService, ClusterVersionListener, ManagedService, ConfigurationService, SplitBrainHandlerService {
-
     public static final String SERVICE_NAME = "configuration-service";
     public static final int CONFIG_PUBLISH_MAX_ATTEMPT_COUNT = 100;
 
@@ -550,5 +554,69 @@ public class ClusterWideConfigurationService implements PreJoinAwareService,
         configToVersion.put(MerkleTreeConfig.class, V4_0);
 
         return Collections.unmodifiableMap(configToVersion);
+    }
+
+    @Override
+    public ConfigReloadResult reload(DynamicConfigurationAwareConfig currentConfig, Config reloadedConfig) {
+        ConfigReloadResult result = new ConfigReloadResult();
+
+        Method[] methods = Config.class.getDeclaredMethods();
+
+        for (Method method : methods) {
+            if (method.getName().startsWith("get") && !method.getName().toLowerCase().contains("network")) {
+                try {
+                    if (method.getParameterCount() > 0 || !Modifier.isPublic(method.getModifiers())) {
+                        continue;
+                    }
+
+                    Object current = method.invoke(currentConfig);
+                    Object reloaded = method.invoke(reloadedConfig);
+
+                    if (reloaded instanceof Map) {
+                        if (!(current instanceof Map)) {
+                            throw new IllegalStateException("Current config should be map too");
+                        }
+                        
+                        Set<? extends Map.Entry<?, ?>> entries = ((Map<?, ?>) reloaded).entrySet();
+                        for (Map.Entry<?, ?> entry : entries) {
+                            Object key = entry.getKey();
+                            diffConfigEntry(result, ((Map<?, ?>) current).get(key), entry.getValue());
+                        }
+
+                    } else {
+                        diffConfigEntry(result, current, reloaded);
+                    }
+                } catch (Exception e) {
+                    logger.warning(e);
+                    // no care here
+                }
+            }
+        }
+
+        if (!result.getNotReloadableChanges().isEmpty()) {
+            logger.warning("Configurations changed in the reloaded configuration but are ignored as not reloadable in a " +
+                    "running cluster: " + result.getNotReloadableChanges());
+        }
+        logger.info("Configurations reloaded: " + result.getReloadableChanges());
+
+        return result;
+    }
+
+    private void diffConfigEntry(ConfigReloadResult result, Object current, Object reloaded) {
+        if ((current == null && reloaded == null)
+                || (current != null && current.equals(reloaded))) {
+            return;
+        }
+
+        if (reloaded instanceof ReloadableConfig){
+            result.addReloadableChange(reloaded);
+
+            if (reloaded instanceof MapConfig){
+                broadcastConfig((IdentifiedDataSerializable) reloaded);
+            }
+
+        } else {
+            result.addNotReloadableChange(reloaded);
+        }
     }
 }

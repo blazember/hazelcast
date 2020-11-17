@@ -151,6 +151,26 @@ public class SqlConfig {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        SqlConfig sqlConfig = (SqlConfig) o;
+
+        if (executorPoolSize != sqlConfig.executorPoolSize) return false;
+        if (operationPoolSize != sqlConfig.operationPoolSize) return false;
+        return statementTimeoutMillis == sqlConfig.statementTimeoutMillis;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = executorPoolSize;
+        result = 31 * result + operationPoolSize;
+        result = 31 * result + (int) (statementTimeoutMillis ^ (statementTimeoutMillis >>> 32));
+        return result;
+    }
+
+    @Override
     public String toString() {
         return "SqlConfig{"
             + "executorPoolSize=" + executorPoolSize

@@ -16,8 +16,8 @@
 
 package com.hazelcast.config;
 
-import com.hazelcast.security.jsm.HazelcastRuntimePermission;
 import com.hazelcast.internal.util.StringUtil;
+import com.hazelcast.security.jsm.HazelcastRuntimePermission;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -395,6 +395,60 @@ public class NetworkConfig {
     public NetworkConfig setMemcacheProtocolConfig(MemcacheProtocolConfig memcacheProtocolConfig) {
         this.memcacheProtocolConfig = memcacheProtocolConfig;
         return this;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        NetworkConfig that = (NetworkConfig) o;
+
+        if (port != that.port) return false;
+        if (portCount != that.portCount) return false;
+        if (portAutoIncrement != that.portAutoIncrement) return false;
+        if (reuseAddress != that.reuseAddress) return false;
+        if (publicAddress != null ? !publicAddress.equals(that.publicAddress) : that.publicAddress != null)
+            return false;
+        if (outboundPortDefinitions != null ? !outboundPortDefinitions.equals(that.outboundPortDefinitions) : that.outboundPortDefinitions != null)
+            return false;
+        if (outboundPorts != null ? !outboundPorts.equals(that.outboundPorts) : that.outboundPorts != null)
+            return false;
+        if (interfaces != null ? !interfaces.equals(that.interfaces) : that.interfaces != null) return false;
+        if (join != null ? !join.equals(that.join) : that.join != null) return false;
+        if (symmetricEncryptionConfig != null ? !symmetricEncryptionConfig.equals(that.symmetricEncryptionConfig) : that.symmetricEncryptionConfig != null)
+            return false;
+        if (socketInterceptorConfig != null ? !socketInterceptorConfig.equals(that.socketInterceptorConfig) : that.socketInterceptorConfig != null)
+            return false;
+        if (sslConfig != null ? !sslConfig.equals(that.sslConfig) : that.sslConfig != null) return false;
+        if (memberAddressProviderConfig != null ? !memberAddressProviderConfig.equals(that.memberAddressProviderConfig) : that.memberAddressProviderConfig != null)
+            return false;
+        if (icmpFailureDetectorConfig != null ? !icmpFailureDetectorConfig.equals(that.icmpFailureDetectorConfig) : that.icmpFailureDetectorConfig != null)
+            return false;
+        if (restApiConfig != null ? !restApiConfig.equals(that.restApiConfig) : that.restApiConfig != null)
+            return false;
+        return memcacheProtocolConfig != null ? memcacheProtocolConfig.equals(that.memcacheProtocolConfig) : that.memcacheProtocolConfig == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = port;
+        result = 31 * result + portCount;
+        result = 31 * result + (portAutoIncrement ? 1 : 0);
+        result = 31 * result + (reuseAddress ? 1 : 0);
+        result = 31 * result + (publicAddress != null ? publicAddress.hashCode() : 0);
+        result = 31 * result + (outboundPortDefinitions != null ? outboundPortDefinitions.hashCode() : 0);
+        result = 31 * result + (outboundPorts != null ? outboundPorts.hashCode() : 0);
+        result = 31 * result + (interfaces != null ? interfaces.hashCode() : 0);
+        result = 31 * result + (join != null ? join.hashCode() : 0);
+        result = 31 * result + (symmetricEncryptionConfig != null ? symmetricEncryptionConfig.hashCode() : 0);
+        result = 31 * result + (socketInterceptorConfig != null ? socketInterceptorConfig.hashCode() : 0);
+        result = 31 * result + (sslConfig != null ? sslConfig.hashCode() : 0);
+        result = 31 * result + (memberAddressProviderConfig != null ? memberAddressProviderConfig.hashCode() : 0);
+        result = 31 * result + (icmpFailureDetectorConfig != null ? icmpFailureDetectorConfig.hashCode() : 0);
+        result = 31 * result + (restApiConfig != null ? restApiConfig.hashCode() : 0);
+        result = 31 * result + (memcacheProtocolConfig != null ? memcacheProtocolConfig.hashCode() : 0);
+        return result;
     }
 
     @Override

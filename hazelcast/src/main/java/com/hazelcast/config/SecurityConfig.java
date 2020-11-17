@@ -211,40 +211,47 @@ public class SecurityConfig {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || !getClass().isAssignableFrom(o.getClass()) && !o.getClass().isAssignableFrom(getClass())) return false;
+
+        SecurityConfig that = (SecurityConfig) o;
+
+        if (enabled != that.enabled) return false;
+        if (clientBlockUnmappedActions != that.clientBlockUnmappedActions) return false;
+        if (securityInterceptorConfigs != null ? !securityInterceptorConfigs.equals(that.securityInterceptorConfigs) : that.securityInterceptorConfigs != null)
+            return false;
+        if (clientPolicyConfig != null ? !clientPolicyConfig.equals(that.clientPolicyConfig) : that.clientPolicyConfig != null)
+            return false;
+        if (clientPermissionConfigs != null ? !clientPermissionConfigs.equals(that.clientPermissionConfigs) : that.clientPermissionConfigs != null)
+            return false;
+        if (realmConfigs != null ? !realmConfigs.equals(that.realmConfigs) : that.realmConfigs != null) return false;
+        if (memberRealm != null ? !memberRealm.equals(that.memberRealm) : that.memberRealm != null) return false;
+        if (clientRealm != null ? !clientRealm.equals(that.clientRealm) : that.clientRealm != null) return false;
+        return onJoinPermissionOperation == that.onJoinPermissionOperation;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = (enabled ? 1 : 0);
+        result = 31 * result + (securityInterceptorConfigs != null ? securityInterceptorConfigs.hashCode() : 0);
+        result = 31 * result + (clientPolicyConfig != null ? clientPolicyConfig.hashCode() : 0);
+        result = 31 * result + (clientPermissionConfigs != null ? clientPermissionConfigs.hashCode() : 0);
+        result = 31 * result + (realmConfigs != null ? realmConfigs.hashCode() : 0);
+        result = 31 * result + (memberRealm != null ? memberRealm.hashCode() : 0);
+        result = 31 * result + (clientRealm != null ? clientRealm.hashCode() : 0);
+        result = 31 * result + (clientBlockUnmappedActions ? 1 : 0);
+        result = 31 * result + (onJoinPermissionOperation != null ? onJoinPermissionOperation.hashCode() : 0);
+        return result;
+    }
+
+    @Override
     public String toString() {
         return "SecurityConfig [enabled=" + enabled + ", securityInterceptorConfigs=" + securityInterceptorConfigs
                 + ", clientPolicyConfig=" + clientPolicyConfig + ", clientPermissionConfigs=" + clientPermissionConfigs
                 + ", realmConfigs=" + realmConfigs + ", memberRealm=" + memberRealm + ", clientRealm=" + clientRealm
                 + ", clientBlockUnmappedActions=" + clientBlockUnmappedActions + ", onJoinPermissionOperation="
                 + onJoinPermissionOperation + "]";
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(clientBlockUnmappedActions, clientPermissionConfigs, clientPolicyConfig, clientRealm, enabled,
-                memberRealm, onJoinPermissionOperation, realmConfigs, securityInterceptorConfigs);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        SecurityConfig other = (SecurityConfig) obj;
-        return clientBlockUnmappedActions == other.clientBlockUnmappedActions
-                && Objects.equals(clientPermissionConfigs, other.clientPermissionConfigs)
-                && Objects.equals(clientPolicyConfig, other.clientPolicyConfig)
-                && Objects.equals(clientRealm, other.clientRealm) && enabled == other.enabled
-                && Objects.equals(memberRealm, other.memberRealm)
-                && onJoinPermissionOperation == other.onJoinPermissionOperation
-                && Objects.equals(realmConfigs, other.realmConfigs)
-                && Objects.equals(securityInterceptorConfigs, other.securityInterceptorConfigs);
     }
 
     private RealmConfig getRealmConfigOrDefault(String realmName) {

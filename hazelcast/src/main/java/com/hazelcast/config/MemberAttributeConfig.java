@@ -59,4 +59,26 @@ public class MemberAttributeConfig {
         attributes.remove(key);
         return this;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        MemberAttributeConfig that = (MemberAttributeConfig) o;
+
+        return attributes != null ? attributes.equals(that.attributes) : that.attributes == null;
+    }
+
+    @Override
+    public int hashCode() {
+        return attributes != null ? attributes.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "MemberAttributeConfig{" +
+                "attributes=" + attributes +
+                '}';
+    }
 }

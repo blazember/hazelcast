@@ -244,4 +244,44 @@ public class UserCodeDeploymentConfig {
     public ClassCacheMode getClassCacheMode() {
         return classCacheMode;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        UserCodeDeploymentConfig that = (UserCodeDeploymentConfig) o;
+
+        if (enabled != that.enabled) return false;
+        if (classCacheMode != that.classCacheMode) return false;
+        if (providerMode != that.providerMode) return false;
+        if (blacklistedPrefixes != null ? !blacklistedPrefixes.equals(that.blacklistedPrefixes) : that.blacklistedPrefixes != null)
+            return false;
+        if (whitelistedPrefixes != null ? !whitelistedPrefixes.equals(that.whitelistedPrefixes) : that.whitelistedPrefixes != null)
+            return false;
+        return providerFilter != null ? providerFilter.equals(that.providerFilter) : that.providerFilter == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = classCacheMode != null ? classCacheMode.hashCode() : 0;
+        result = 31 * result + (providerMode != null ? providerMode.hashCode() : 0);
+        result = 31 * result + (blacklistedPrefixes != null ? blacklistedPrefixes.hashCode() : 0);
+        result = 31 * result + (whitelistedPrefixes != null ? whitelistedPrefixes.hashCode() : 0);
+        result = 31 * result + (providerFilter != null ? providerFilter.hashCode() : 0);
+        result = 31 * result + (enabled ? 1 : 0);
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "UserCodeDeploymentConfig{" +
+                "classCacheMode=" + classCacheMode +
+                ", providerMode=" + providerMode +
+                ", blacklistedPrefixes='" + blacklistedPrefixes + '\'' +
+                ", whitelistedPrefixes='" + whitelistedPrefixes + '\'' +
+                ", providerFilter='" + providerFilter + '\'' +
+                ", enabled=" + enabled +
+                '}';
+    }
 }

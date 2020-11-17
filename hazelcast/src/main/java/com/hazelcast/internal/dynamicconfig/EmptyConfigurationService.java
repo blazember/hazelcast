@@ -18,6 +18,7 @@ package com.hazelcast.internal.dynamicconfig;
 
 import com.hazelcast.config.CacheSimpleConfig;
 import com.hazelcast.config.CardinalityEstimatorConfig;
+import com.hazelcast.config.Config;
 import com.hazelcast.config.DurableExecutorConfig;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.FlakeIdGeneratorConfig;
@@ -202,6 +203,11 @@ class EmptyConfigurationService implements ConfigurationService {
     @Override
     public Map<String, FlakeIdGeneratorConfig> getFlakeIdGeneratorConfigs() {
         return emptyMap();
+    }
+
+    @Override
+    public ConfigReloadResult reload(DynamicConfigurationAwareConfig dynamicConfigurationAwareConfig, Config reloadedConfig) {
+        return null;
     }
 
     @Override

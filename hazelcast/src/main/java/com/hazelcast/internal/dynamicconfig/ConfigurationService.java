@@ -18,6 +18,7 @@ package com.hazelcast.internal.dynamicconfig;
 
 import com.hazelcast.config.CacheSimpleConfig;
 import com.hazelcast.config.CardinalityEstimatorConfig;
+import com.hazelcast.config.Config;
 import com.hazelcast.config.DurableExecutorConfig;
 import com.hazelcast.config.ExecutorConfig;
 import com.hazelcast.config.FlakeIdGeneratorConfig;
@@ -296,4 +297,6 @@ public interface ConfigurationService {
      * @return registered FlakeIdGenerator configurations
      */
     Map<String, FlakeIdGeneratorConfig> getFlakeIdGeneratorConfigs();
+
+    ConfigReloadResult reload(DynamicConfigurationAwareConfig dynamicConfigurationAwareConfig, Config reloadedConfig);
 }

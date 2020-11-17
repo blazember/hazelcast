@@ -203,18 +203,26 @@ public class DynamicSecurityConfig extends SecurityConfig {
         if (this == o) {
             return true;
         }
-        if (o == null || getClass() != o.getClass()) {
+        if (o == null || getClass().isAssignableFrom(o.getClass())) {
             return false;
         }
         if (!super.equals(o)) {
             return false;
         }
 
-        DynamicSecurityConfig that = (DynamicSecurityConfig) o;
+        if (o instanceof DynamicSecurityConfig) {
+            DynamicSecurityConfig that = (DynamicSecurityConfig) o;
 
-        return staticSecurityConfig != null
-                ? staticSecurityConfig.equals(that.staticSecurityConfig)
-                : that.staticSecurityConfig == null;
+            return staticSecurityConfig != null
+                    ? staticSecurityConfig.equals(that.staticSecurityConfig)
+                    : that.staticSecurityConfig == null;
+        } else {
+            SecurityConfig that = (SecurityConfig) o;
+
+            return staticSecurityConfig != null
+                    ? staticSecurityConfig.equals(that)
+                    : that == null;
+        }
     }
 
     @Override

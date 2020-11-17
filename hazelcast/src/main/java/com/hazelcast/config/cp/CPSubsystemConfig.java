@@ -669,6 +669,48 @@ public class CPSubsystemConfig {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || !getClass().isAssignableFrom(o.getClass()) && !o.getClass().isAssignableFrom(getClass())) return false;
+
+        CPSubsystemConfig that = (CPSubsystemConfig) o;
+
+        if (cpMemberCount != that.cpMemberCount) return false;
+        if (groupSize != that.groupSize) return false;
+        if (sessionTimeToLiveSeconds != that.sessionTimeToLiveSeconds) return false;
+        if (sessionHeartbeatIntervalSeconds != that.sessionHeartbeatIntervalSeconds) return false;
+        if (missingCPMemberAutoRemovalSeconds != that.missingCPMemberAutoRemovalSeconds) return false;
+        if (failOnIndeterminateOperationState != that.failOnIndeterminateOperationState) return false;
+        if (persistenceEnabled != that.persistenceEnabled) return false;
+        if (dataLoadTimeoutSeconds != that.dataLoadTimeoutSeconds) return false;
+        if (baseDir != null ? !baseDir.equals(that.baseDir) : that.baseDir != null) return false;
+        if (raftAlgorithmConfig != null ? !raftAlgorithmConfig.equals(that.raftAlgorithmConfig) : that.raftAlgorithmConfig != null)
+            return false;
+        if (semaphoreConfigs != null ? !semaphoreConfigs.equals(that.semaphoreConfigs) : that.semaphoreConfigs != null)
+            return false;
+        if (lockConfigs != null ? !lockConfigs.equals(that.lockConfigs) : that.lockConfigs != null) return false;
+        return configPatternMatcher != null ? configPatternMatcher.equals(that.configPatternMatcher) : that.configPatternMatcher == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = cpMemberCount;
+        result = 31 * result + groupSize;
+        result = 31 * result + sessionTimeToLiveSeconds;
+        result = 31 * result + sessionHeartbeatIntervalSeconds;
+        result = 31 * result + missingCPMemberAutoRemovalSeconds;
+        result = 31 * result + (failOnIndeterminateOperationState ? 1 : 0);
+        result = 31 * result + (persistenceEnabled ? 1 : 0);
+        result = 31 * result + (baseDir != null ? baseDir.hashCode() : 0);
+        result = 31 * result + dataLoadTimeoutSeconds;
+        result = 31 * result + (raftAlgorithmConfig != null ? raftAlgorithmConfig.hashCode() : 0);
+        result = 31 * result + (semaphoreConfigs != null ? semaphoreConfigs.hashCode() : 0);
+        result = 31 * result + (lockConfigs != null ? lockConfigs.hashCode() : 0);
+        result = 31 * result + (configPatternMatcher != null ? configPatternMatcher.hashCode() : 0);
+        return result;
+    }
+
+    @Override
     public String toString() {
         return "CPSubsystemConfig{" + "cpMemberCount=" + cpMemberCount + ", groupSize=" + groupSize
                 + ", sessionTimeToLiveSeconds=" + sessionTimeToLiveSeconds + ", sessionHeartbeatIntervalSeconds="

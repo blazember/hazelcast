@@ -93,4 +93,30 @@ public class CRDTReplicationConfig {
         this.maxConcurrentReplicationTargets = maxConcurrentReplicationTargets;
         return this;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        CRDTReplicationConfig that = (CRDTReplicationConfig) o;
+
+        if (replicationPeriodMillis != that.replicationPeriodMillis) return false;
+        return maxConcurrentReplicationTargets == that.maxConcurrentReplicationTargets;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = replicationPeriodMillis;
+        result = 31 * result + maxConcurrentReplicationTargets;
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "CRDTReplicationConfig{" +
+                "replicationPeriodMillis=" + replicationPeriodMillis +
+                ", maxConcurrentReplicationTargets=" + maxConcurrentReplicationTargets +
+                '}';
+    }
 }

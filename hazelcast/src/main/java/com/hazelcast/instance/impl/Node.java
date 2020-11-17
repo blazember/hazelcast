@@ -32,6 +32,7 @@ import com.hazelcast.config.EndpointConfig;
 import com.hazelcast.config.JoinConfig;
 import com.hazelcast.config.ListenerConfig;
 import com.hazelcast.config.MemberAttributeConfig;
+import com.hazelcast.config.MetricsConfig;
 import com.hazelcast.config.UserCodeDeploymentConfig;
 import com.hazelcast.core.DistributedObjectListener;
 import com.hazelcast.core.HazelcastInstanceAware;
@@ -59,6 +60,7 @@ import com.hazelcast.internal.config.AliasedDiscoveryConfigUtils;
 import com.hazelcast.internal.config.DiscoveryConfigReadOnly;
 import com.hazelcast.internal.config.MemberAttributeConfigReadOnly;
 import com.hazelcast.internal.diagnostics.HealthMonitor;
+import com.hazelcast.internal.dynamicconfig.ConfigReloadResult;
 import com.hazelcast.internal.dynamicconfig.DynamicConfigurationAwareConfig;
 import com.hazelcast.internal.management.ManagementCenterService;
 import com.hazelcast.internal.metrics.MetricsRegistry;
@@ -894,6 +896,11 @@ public class Node {
 
     public BuildInfo getBuildInfo() {
         return buildInfo;
+    }
+
+    public ConfigReloadResult reloadConfig(Config reloadedConfig) {
+        MetricsConfigHelper.overrideMemberMetricsConfig(reloadedConfig, logger);
+        return config.reload(reloadedConfig);
     }
 
     private Map<String, String> findMemberAttributes(MemberAttributeConfig attributeConfig) {

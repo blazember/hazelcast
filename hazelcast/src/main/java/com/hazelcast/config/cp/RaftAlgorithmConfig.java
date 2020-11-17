@@ -226,6 +226,34 @@ public class RaftAlgorithmConfig {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        RaftAlgorithmConfig that = (RaftAlgorithmConfig) o;
+
+        if (leaderElectionTimeoutInMillis != that.leaderElectionTimeoutInMillis) return false;
+        if (leaderHeartbeatPeriodInMillis != that.leaderHeartbeatPeriodInMillis) return false;
+        if (maxMissedLeaderHeartbeatCount != that.maxMissedLeaderHeartbeatCount) return false;
+        if (appendRequestMaxEntryCount != that.appendRequestMaxEntryCount) return false;
+        if (commitIndexAdvanceCountToSnapshot != that.commitIndexAdvanceCountToSnapshot) return false;
+        if (uncommittedEntryCountToRejectNewAppends != that.uncommittedEntryCountToRejectNewAppends) return false;
+        return appendRequestBackoffTimeoutInMillis == that.appendRequestBackoffTimeoutInMillis;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = (int) (leaderElectionTimeoutInMillis ^ (leaderElectionTimeoutInMillis >>> 32));
+        result = 31 * result + (int) (leaderHeartbeatPeriodInMillis ^ (leaderHeartbeatPeriodInMillis >>> 32));
+        result = 31 * result + maxMissedLeaderHeartbeatCount;
+        result = 31 * result + appendRequestMaxEntryCount;
+        result = 31 * result + commitIndexAdvanceCountToSnapshot;
+        result = 31 * result + uncommittedEntryCountToRejectNewAppends;
+        result = 31 * result + (int) (appendRequestBackoffTimeoutInMillis ^ (appendRequestBackoffTimeoutInMillis >>> 32));
+        return result;
+    }
+
+    @Override
     public String toString() {
         return "RaftAlgorithmConfig{" + "leaderElectionTimeoutInMillis=" + leaderElectionTimeoutInMillis
                 + ", leaderHeartbeatPeriodInMillis=" + leaderHeartbeatPeriodInMillis + ", maxMissedLeaderHeartbeatCount="

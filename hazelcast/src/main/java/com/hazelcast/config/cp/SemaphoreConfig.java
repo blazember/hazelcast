@@ -140,6 +140,26 @@ public class SemaphoreConfig {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        SemaphoreConfig that = (SemaphoreConfig) o;
+
+        if (jdkCompatible != that.jdkCompatible) return false;
+        if (initialPermits != that.initialPermits) return false;
+        return name != null ? name.equals(that.name) : that.name == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = name != null ? name.hashCode() : 0;
+        result = 31 * result + (jdkCompatible ? 1 : 0);
+        result = 31 * result + initialPermits;
+        return result;
+    }
+
+    @Override
     public String toString() {
         return "SemaphoreConfig{" + "name='" + name + '\'' + ", jdkCompatible=" + jdkCompatible + ", initialPermits="
                 + initialPermits + '}';

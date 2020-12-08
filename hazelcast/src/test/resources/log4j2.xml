@@ -37,5 +37,6 @@
         <!--<Logger name="com.hazelcast.client.impl.spi.ClientClusterService" level="trace"/>-->
         <!--<Logger name="com.hazelcast.client.impl.spi.ClientInvocationService" level="trace"/>-->
         <!--<Logger name="com.hazelcast.client.impl.connection.ClientConnectionManager" level="trace"/>-->
+        <Logger name="com.hazelcast.internal.config.updater.ConfigUpdater" level="trace"/>
     </Loggers>
 </Configuration>
